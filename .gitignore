@@ -1,0 +1,6 @@
+node_modules/
+.vercel
+.env*
+data/raw_user_input.txt
+.DS_Store
+Thumbs.db

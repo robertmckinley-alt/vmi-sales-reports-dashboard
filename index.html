@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VMI Executive Analytics | 13v13 Client & Rep Order Comparison</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="data/reports-data.js"></script>
+  <script src="app-common.js"></script>
+</head>
+<body>
+
+  <!-- Top Navigation Header -->
+  <header class="header-navbar">
+    <div class="brand-section">
+      <span class="brand-badge">VMI</span>
+      <h1 class="brand-title">Executive Analytics</h1>
+    </div>
+    <nav class="nav-links">
+      <a href="index.html" class="nav-link active">
+        <span>📊</span> Report 1: 13v13 Comparison
+      </a>
+      <a href="preroll-performance.html" class="nav-link">
+        <span>🔥</span> Report 2: Preroll & Voids
+      </a>
+    </nav>
+    <div class="nav-actions">
+      <button class="btn btn-secondary" id="btnExportActiveTable">
+        <span>📥</span> Export CSV
+      </button>
+    </div>
+  </header>
+
+  <main class="container">
+    <!-- Page Hero -->
+    <section class="page-hero">
+      <div class="period-badges">
+        <span class="period-badge tp1">📅 TP1: 05/04/2026 – 08/02/2026</span>
+        <span class="period-badge tp2">📅 TP2: 08/03/2026 – 11/01/2026</span>
+        <span class="period-badge status">13 Weeks vs. 13 Weeks Comparison</span>
+      </div>
+      <h2 class="page-hero-title">13-Week Client & Rep Order Comparison</h2>
+    </section>
+
+    <!-- 4 Executive KPI Cards -->
+    <section class="kpi-grid">
+      <div class="kpi-card">
+        <div class="kpi-label">
+          <span>Total Orders</span>
+          <span class="delta-badge pos" id="kpiOrdersDelta">+214 (+6.24%)</span>
+        </div>
+        <div class="kpi-value" id="kpiOrdersTP2">3,642</div>
+        <div class="kpi-baseline">
+          <span>TP1 Baseline: <strong id="kpiOrdersTP1">3,428</strong></span>
+          <span id="kpiOrdersDiffText">+214 diff</span>
+        </div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-label">
+          <span>Total Revenue Ordered</span>
+          <span class="delta-badge pos" id="kpiRevDelta">+$400,533.22 (+2.94%)</span>
+        </div>
+        <div class="kpi-value" id="kpiRevTP2">$14,038,451.18</div>
+        <div class="kpi-baseline">
+          <span>TP1 Baseline: <strong id="kpiRevTP1">$13,637,917.96</strong></span>
+          <span id="kpiRevDiffText">+$400,533.22</span>
+        </div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-label">
+          <span>Total Units Ordered</span>
+          <span class="delta-badge pos" id="kpiUnitsDelta">+40,499 (+1.50%)</span>
+        </div>
+        <div class="kpi-value" id="kpiUnitsTP2">2,747,332</div>
+        <div class="kpi-baseline">
+          <span>TP1 Baseline: <strong id="kpiUnitsTP1">2,706,833</strong></span>
+          <span id="kpiUnitsDiffText">+40,499 diff</span>
+        </div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-label">
+          <span>Average Order Value (AOV)</span>
+          <span class="delta-badge neg" id="kpiAovDelta">-$123.79 (-3.11%)</span>
+        </div>
+        <div class="kpi-value" id="kpiAovTP2">$3,854.60</div>
+        <div class="kpi-baseline">
+          <span>TP1 Baseline: <strong id="kpiAovTP1">$3,978.39</strong></span>
+          <span id="kpiAovDiffText">-$123.79</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Visual Analytics Row: Rep Revenue Bar Chart & Top Gainers/Decliners -->
+    <section class="analytics-row">
+      <div class="analytics-card">
+        <div class="card-header">
+          <div>
+            <h3 class="card-title"><span>👥</span> Sales Rep Revenue Comparison</h3>
+            <span class="card-subtitle">TP1 (Indigo) vs. TP2 (Cyan) Performance by Rep</span>
+          </div>
+          <span class="period-badge tp2">13 Rep / House Lines</span>
+        </div>
+        <div class="bar-chart-container" id="repChartContainer">
+          <!-- Populated by report1.js -->
+        </div>
+      </div>
+
+      <div class="analytics-card">
+        <div class="card-header">
+          <div>
+            <h3 class="card-title"><span>📈</span> Top Revenue Gainers & Decliners</h3>
+            <span class="card-subtitle">Largest dollar increases vs. decreases between 13wk periods</span>
+          </div>
+          <div class="nav-links" style="padding: 2px;">
+            <button class="btn btn-secondary" id="btnGainersToggle" style="padding: 2px 8px; font-size: 0.75rem;">Top Gainers</button>
+            <button class="btn btn-secondary" id="btnDeclinersToggle" style="padding: 2px 8px; font-size: 0.75rem;">Top Decliners</button>
+          </div>
+        </div>
+        <div class="bar-chart-container" id="gainersDeclinersChartContainer">
+          <!-- Populated by report1.js -->
+        </div>
+      </div>
+    </section>
+
+    <!-- Sales Rep Performance Table Section -->
+    <section class="analytics-card" style="margin-bottom: 1.5rem;">
+      <div class="card-header">
+        <div>
+          <h3 class="card-title"><span>👔</span> Sales Rep & House Accounts Performance Table</h3>
+          <span class="card-subtitle">Complete order, revenue, units, and AOV metrics with 13v13 deltas</span>
+        </div>
+        <div style="display: flex; gap: 0.5rem; align-items: center;">
+          <label style="font-size: 0.8rem; color: var(--text-secondary); cursor: pointer; display: flex; align-items: center; gap: 0.35rem;">
+            <input type="checkbox" id="chkConsolidateReps">
+            <span>Consolidate House into Reps (9 Reps)</span>
+          </label>
+          <button class="btn btn-secondary" id="btnExportReps">Export Reps CSV</button>
+        </div>
+      </div>
+      <div class="table-container">
+        <table class="data-table" id="repsTable">
+          <thead>
+            <tr>
+              <th class="sortable" data-col="rep">Sales Rep / Line <span class="sort-icon">↕</span></th>
+              <th class="sortable" data-col="role">Role <span class="sort-icon">↕</span></th>
+              <th class="sortable text-right" data-col="tp1Orders">TP1 Orders <span class="sort-icon">↕</span></th>
+              <th class="sortable text-right" data-col="tp1Ordered">TP1 Rev <span class="sort-icon">↕</span></th>
+              <th class="sortable text-right" data-col="tp1Units">TP1 Units <span class="sort-icon">↕</span></th>
+              <th class="sortable text-right" data-col="tp1Aov">TP1 AOV <span class="sort-icon">↕</span></th>
+              <th class="sortable text-right" data-col="tp2Orders">TP2 Orders <span class="sort-icon">↕</span></th>
+              <th class="sortable text-right" data-col="tp2Ordered">TP2 Rev <span class="sort-icon">↕</span></th>
+              <th class="sortable text-right" data-col="tp2Units">TP2 Units <span class="sort-icon">↕</span></th>
+              <th class="sortable text-right" data-col="tp2Aov">TP2 AOV <span class="sort-icon">↕</span></th>
+              <th class="sortable text-right" data-col="orderDiff">Order Diff <span class="sort-icon">↕</span></th>
+              <th class="sortable text-right" data-col="revDiff">Rev Diff <span class="sort-icon">↕</span></th>
+              <th class="sortable text-right" data-col="unitDiff">Unit Diff <span class="sort-icon">↕</span></th>
+              <th class="sortable text-right" data-col="aovDiff">AOV Diff <span class="sort-icon">↕</span></th>
+            </tr>
+          </thead>
+          <tbody id="repsTableBody">
+            <!-- Populated by report1.js -->
+          </tbody>
+          <tfoot id="repsTableFoot">
+            <!-- Populated by report1.js -->
+          </tfoot>
+        </table>
+      </div>
+    </section>
+
+    <!-- Client Data Explorer (3 Tabs) -->
+    <section>
+      <!-- Sub-Tab Switcher -->
+      <div class="tabs-bar">
+        <button class="tab-btn active" data-tab="compare">
+          <span>🔄</span> 13v13 Comparison Diffs
+          <span class="tab-badge" id="badgeCompareCount">403</span>
+        </button>
+        <button class="tab-btn" data-tab="tp1">
+          <span>📅</span> Period 1: 05/04/2026 – 08/02/2026
+          <span class="tab-badge" id="badgeTp1Count">399</span>
+        </button>
+        <button class="tab-btn" data-tab="tp2">
+          <span>📅</span> Period 2: 08/03/2026 – 11/01/2026
+          <span class="tab-badge" id="badgeTp2Count">400</span>
+        </button>
+      </div>
+
+      <!-- Filter Controls Bar -->
+      <div class="controls-bar">
+        <div class="filter-left">
+          <input type="text" class="search-input" id="clientSearchInput" placeholder="🔍 Search clients or chain code...">
+          <button class="filter-pill active" data-filter="all">All Clients</button>
+          <button class="filter-pill" data-filter="vmi">VMI Only</button>
+          <button class="filter-pill" data-filter="1wt">1WT Only</button>
+          <button class="filter-pill" data-filter="chain">Chain Stores [BRACKET]</button>
+          <button class="filter-pill" data-filter="gainers">Revenue Up (+)</button>
+          <button class="filter-pill" data-filter="decliners">Revenue Down (-)</button>
+        </div>
+        <div class="filter-right">
+          <label style="font-size: 0.8rem; color: var(--text-secondary);">Rows per page:</label>
+          <select class="select-filter" id="pageSizeSelect">
+            <option value="50">50</option>
+            <option value="100">100</option>
+            <option value="250">250</option>
+            <option value="all">All</option>
+          </select>
+          <button class="btn btn-secondary" id="btnExportClients">Export CSV</button>
+        </div>
+      </div>
+
+      <!-- Main Client Table -->
+      <div class="table-container">
+        <table class="data-table" id="clientsTable">
+          <thead id="clientsTableHead">
+            <!-- Populated dynamically according to active sub-tab -->
+          </thead>
+          <tbody id="clientsTableBody">
+            <!-- Populated dynamically -->
+          </tbody>
+          <tfoot id="clientsTableFoot">
+            <!-- Populated dynamically -->
+          </tfoot>
+        </table>
+      </div>
+
+      <!-- Pagination Info and Buttons -->
+      <div class="pagination-bar" id="paginationBar">
+        <span id="paginationInfo">Showing 1 to 50 of 403 rows</span>
+        <div class="page-buttons" id="paginationButtons">
+          <!-- Populated dynamically -->
+        </div>
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="dashboard-footer">
+      <div>VMI Executive Analytics Platform • Source: <code>13v13.xlsx</code> & <code>12wk_v_12wk_preroll_performance.xlsx</code></div>
+      <div>Data Period: 05/04/2026 – 11/01/2026</div>
+    </footer>
+  </main>
+
+  <script src="report1.js"></script>
+</body>
+</html>

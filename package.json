@@ -1,0 +1,13 @@
+{
+  "name": "vmi-sales-reports-dashboard",
+  "version": "1.0.0",
+  "description": "Executive 2-Page VMI Sales & Preroll Performance Dashboard",
+  "scripts": {
+    "extract": "python scripts/extract_data.py",
+    "test": "node tests/verify.test.js",
+    "start": "npx serve ."
+  },
+  "keywords": ["vmi", "sales", "preroll", "analytics", "dashboard"],
+  "author": "VMI Executive Analytics",
+  "license": "ISC"
+}

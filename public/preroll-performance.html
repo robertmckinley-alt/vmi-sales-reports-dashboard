@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VMI Executive Analytics | 12wk Preroll Performance & Category Voids</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="data/reports-data.js"></script>
+  <script src="app-common.js"></script>
+</head>
+<body>
+
+  <!-- Top Navigation Header -->
+  <header class="header-navbar">
+    <div class="brand-section">
+      <span class="brand-badge">VMI</span>
+      <h1 class="brand-title">Executive Analytics</h1>
+    </div>
+    <nav class="nav-links">
+      <a href="index.html" class="nav-link">
+        <span>📊</span> Report 1: 13v13 Comparison
+      </a>
+      <a href="preroll-performance.html" class="nav-link active">
+        <span>🔥</span> Report 2: Preroll & Voids
+      </a>
+    </nav>
+    <div class="nav-actions">
+      <button class="btn btn-secondary" id="btnExportActiveTable">
+        <span>📥</span> Export CSV
+      </button>
+    </div>
+  </header>
+
+  <main class="container">
+    <!-- Page Hero -->
+    <section class="page-hero">
+      <div class="period-badges">
+        <span class="period-badge tp1">📅 TP1: 05/11/2026 – 08/02/2026</span>
+        <span class="period-badge tp2">📅 TP2: 08/03/2026 – 11/29/2026</span>
+        <span class="period-badge status">12 Weeks vs. 12 Weeks Preroll Category Performance</span>
+      </div>
+      <h2 class="page-hero-title">12-Week Preroll Performance & Latest 12wk Voids</h2>
+    </section>
+
+    <!-- 5 Executive KPI Cards -->
+    <section class="kpi-grid" style="grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));">
+      <div class="kpi-card">
+        <div class="kpi-label">
+          <span>Preroll Total Orders</span>
+          <span class="delta-badge pos" id="kpiPrerollOrdersDelta">+168 (+5.99%)</span>
+        </div>
+        <div class="kpi-value" id="kpiPrerollOrdersTP2">2,974</div>
+        <div class="kpi-baseline">
+          <span>TP1 Baseline: <strong id="kpiPrerollOrdersTP1">2,806</strong></span>
+          <span id="kpiPrerollOrdersDiffText">+168 diff</span>
+        </div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-label">
+          <span>Preroll Total Revenue</span>
+          <span class="delta-badge neg" id="kpiPrerollRevDelta">-$129,405.35 (-5.57%)</span>
+        </div>
+        <div class="kpi-value" id="kpiPrerollRevTP2">$2,193,701.82</div>
+        <div class="kpi-baseline">
+          <span>TP1 Baseline: <strong id="kpiPrerollRevTP1">$2,323,107.17</strong></span>
+          <span id="kpiPrerollRevDiffText">-$129,405.35</span>
+        </div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-label">
+          <span>Preroll Total Units</span>
+          <span class="delta-badge neg" id="kpiPrerollUnitsDelta">-36,330 (-3.57%)</span>
+        </div>
+        <div class="kpi-value" id="kpiPrerollUnitsTP2">980,598</div>
+        <div class="kpi-baseline">
+          <span>TP1 Baseline: <strong id="kpiPrerollUnitsTP1">1,016,928</strong></span>
+          <span id="kpiPrerollUnitsDiffText">-36,330 diff</span>
+        </div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-label">
+          <span>Preroll AOV</span>
+          <span class="delta-badge neg" id="kpiPrerollAovDelta">-$90.28 (-10.90%)</span>
+        </div>
+        <div class="kpi-value" id="kpiPrerollAovTP2">$737.63</div>
+        <div class="kpi-baseline">
+          <span>TP1 Baseline: <strong id="kpiPrerollAovTP1">$827.91</strong></span>
+          <span id="kpiPrerollAovDiffText">-$90.28</span>
+        </div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-label">
+          <span>Account Dynamics & Voids</span>
+          <span class="delta-badge neutral">10 Categories</span>
+        </div>
+        <div class="kpi-value" style="font-size: 1.35rem; display: flex; gap: 0.5rem; align-items: baseline;">
+          <span style="color: var(--emerald-text);">+13 G</span>
+          <span style="color: var(--text-muted); font-weight: 400;">/</span>
+          <span style="color: var(--rose-text);">-18 L</span>
+        </div>
+        <div class="kpi-baseline">
+          <span>Total Void Entries: <strong>2,287</strong></span>
+          <span class="tag-badge tag-vmi">401 Stores</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Page 2 Primary View Switcher -->
+    <div class="tabs-bar" style="margin-top: 1rem;">
+      <button class="tab-btn active" data-view="clients">
+        <span>🏪</span> 12wk vs. 12wk Client Performance
+        <span class="tab-badge" id="badgePrerollClientsCount">404</span>
+      </button>
+      <button class="tab-btn" data-view="voids">
+        <span>⚠️</span> Latest 12wk Category Voids Explorer
+        <span class="tab-badge" id="badgeVoidsCount">2,287</span>
+      </button>
+    </div>
+
+    <!-- ================= VIEW 1: CLIENT PERFORMANCE ================= -->
+    <div id="viewClientsSection">
+      <!-- Visual Analytics Row: Top Gainers/Decliners & G/L Spotlights -->
+      <section class="analytics-row">
+        <div class="analytics-card">
+          <div class="card-header">
+            <div>
+              <h3 class="card-title"><span>📈</span> Top Preroll Gainers & Decliners</h3>
+              <span class="card-subtitle">Highest positive vs negative revenue shifts between 12wk periods</span>
+            </div>
+            <div class="nav-links" style="padding: 2px;">
+              <button class="btn btn-primary" id="btnPrerollGainersToggle" style="padding: 2px 8px; font-size: 0.75rem;">Top Gainers</button>
+              <button class="btn btn-secondary" id="btnPrerollDeclinersToggle" style="padding: 2px 8px; font-size: 0.75rem;">Top Decliners</button>
+            </div>
+          </div>
+          <div class="bar-chart-container" id="prerollGainersChartContainer">
+            <!-- Populated dynamically -->
+          </div>
+        </div>
+
+        <div class="analytics-card">
+          <div class="card-header">
+            <div>
+              <h3 class="card-title"><span>🎯</span> Account Gain & Loss Spotlight</h3>
+              <span class="card-subtitle">Newly Acquired Accounts (G: 13) vs Inactive Accounts (L: 18)</span>
+            </div>
+            <div class="nav-links" style="padding: 2px;">
+              <button class="btn btn-primary" id="btnGlGainedToggle" style="padding: 2px 8px; font-size: 0.75rem;">Gained (13)</button>
+              <button class="btn btn-secondary" id="btnGlLostToggle" style="padding: 2px 8px; font-size: 0.75rem;">Lost (18)</button>
+            </div>
+          </div>
+          <div class="bar-chart-container" id="glSpotlightContainer">
+            <!-- Populated dynamically -->
+          </div>
+        </div>
+      </section>
+
+      <!-- Client Filter Controls Bar -->
+      <div class="controls-bar">
+        <div class="filter-left">
+          <input type="text" class="search-input" id="prerollSearchInput" placeholder="🔍 Search store, chain, or rep...">
+          <button class="filter-pill active" data-cfilter="all">All (404)</button>
+          <button class="filter-pill" data-cfilter="gained">Gained [G] (13)</button>
+          <button class="filter-pill" data-cfilter="lost">Lost [L] (18)</button>
+          <button class="filter-pill" data-cfilter="vmi">VMI Only</button>
+          <button class="filter-pill" data-cfilter="1wt">1WT Only</button>
+          <button class="filter-pill" data-cfilter="gainers">Revenue Up (+)</button>
+          <button class="filter-pill" data-cfilter="decliners">Revenue Down (-)</button>
+        </div>
+        <div class="filter-right">
+          <select class="select-filter" id="prerollRepSelect">
+            <option value="">All Sales Reps</option>
+            <!-- Populated dynamically -->
+          </select>
+          <select class="select-filter" id="prerollPageSizeSelect">
+            <option value="50">50</option>
+            <option value="100">100</option>
+            <option value="250">250</option>
+            <option value="all">All</option>
+          </select>
+          <button class="btn btn-secondary" id="btnExportPrerollClients">Export CSV</button>
+        </div>
+      </div>
+
+      <!-- Preroll Client Table -->
+      <div class="table-container">
+        <table class="data-table" id="prerollTable">
+          <thead>
+            <tr>
+              <th class="sortable" data-col="client">Client & Status <span class="sort-icon">↕</span></th>
+              <th class="sortable" data-col="salesRep">Sales Rep <span class="sort-icon">↕</span></th>
+              <th class="sortable text-right" data-col="tp1Orders">TP1 Orders <span class="sort-icon">↕</span></th>
+              <th class="sortable text-right" data-col="tp1Ordered">TP1 Rev <span class="sort-icon">↕</span></th>
+              <th class="sortable text-right" data-col="tp1Units">TP1 Units <span class="sort-icon">↕</span></th>
+              <th class="sortable text-right" data-col="tp1Aov">TP1 AOV <span class="sort-icon">↕</span></th>
+              <th class="sortable text-right" data-col="tp2Orders">TP2 Orders <span class="sort-icon">↕</span></th>
+              <th class="sortable text-right" data-col="tp2Ordered">TP2 Rev <span class="sort-icon">↕</span></th>
+              <th class="sortable text-right" data-col="tp2Units">TP2 Units <span class="sort-icon">↕</span></th>
+              <th class="sortable text-right" data-col="tp2Aov">TP2 AOV <span class="sort-icon">↕</span></th>
+              <th class="sortable text-right" data-col="orderDiff">Order Diff <span class="sort-icon">↕</span></th>
+              <th class="sortable text-right" data-col="revDiff">Rev Diff <span class="sort-icon">↕</span></th>
+              <th class="sortable text-right" data-col="unitDiff">Unit Diff <span class="sort-icon">↕</span></th>
+              <th class="sortable text-right" data-col="aveDiff">AOV Diff <span class="sort-icon">↕</span></th>
+              <th class="sortable text-center" data-col="voidCount">Voids <span class="sort-icon">↕</span></th>
+            </tr>
+          </thead>
+          <tbody id="prerollTableBody">
+            <!-- Populated dynamically -->
+          </tbody>
+          <tfoot id="prerollTableFoot">
+            <!-- Populated dynamically -->
+          </tfoot>
+        </table>
+      </div>
+
+      <!-- Pagination Bar -->
+      <div class="pagination-bar">
+        <span id="prerollPaginationInfo">Showing 1 to 50 of 404 rows</span>
+        <div class="page-buttons" id="prerollPaginationButtons">
+          <!-- Populated dynamically -->
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= VIEW 2: CATEGORY VOIDS EXPLORER ================= -->
+    <div id="viewVoidsSection" style="display: none;">
+      <!-- Category & Rep Summary Cards Row -->
+      <section class="analytics-row">
+        <div class="analytics-card">
+          <div class="card-header">
+            <div>
+              <h3 class="card-title"><span>📦</span> Preroll Category Voids Breakdown</h3>
+              <span class="card-subtitle">Number of stores with voids per Preroll Category (10 Categories)</span>
+            </div>
+            <span class="period-badge tp2">2,287 Total Voids</span>
+          </div>
+          <div class="bar-chart-container" id="categoryVoidsChartContainer">
+            <!-- Populated dynamically -->
+          </div>
+        </div>
+
+        <div class="analytics-card">
+          <div class="card-header">
+            <div>
+              <h3 class="card-title"><span>👤</span> Voids by Sales Rep Territory</h3>
+              <span class="card-subtitle">Total void opportunities by rep territory</span>
+            </div>
+            <span class="period-badge status">12 Rep Terrs</span>
+          </div>
+          <div class="bar-chart-container" id="repsVoidsChartContainer">
+            <!-- Populated dynamically -->
+          </div>
+        </div>
+      </section>
+
+      <!-- Voids Sub-Mode Toggle & Filter Controls -->
+      <div class="controls-bar">
+        <div class="filter-left">
+          <div class="nav-links" style="padding: 2px;">
+            <button class="btn btn-primary" id="btnVoidModeRoster" style="padding: 4px 12px; font-size: 0.8rem;">
+              <span>📋</span> Flat Roster View (2,287 Rows)
+            </button>
+            <button class="btn btn-secondary" id="btnVoidModeMatrix" style="padding: 4px 12px; font-size: 0.8rem;">
+              <span>🔲</span> Store × Category Matrix View
+            </button>
+          </div>
+          <input type="text" class="search-input" id="voidsSearchInput" placeholder="🔍 Search store, chain, or rep...">
+          <select class="select-filter" id="voidsCategorySelect">
+            <option value="">All 10 Categories</option>
+            <!-- Populated dynamically -->
+          </select>
+          <select class="select-filter" id="voidsRepSelect">
+            <option value="">All Sales Reps</option>
+            <!-- Populated dynamically -->
+          </select>
+        </div>
+        <div class="filter-right">
+          <select class="select-filter" id="voidsPageSizeSelect">
+            <option value="50">50</option>
+            <option value="100">100</option>
+            <option value="250">250</option>
+            <option value="all">All</option>
+          </select>
+          <button class="btn btn-secondary" id="btnExportVoids">Export CSV</button>
+        </div>
+      </div>
+
+      <!-- Void Flat Roster Table Container -->
+      <div class="table-container" id="voidRosterContainer">
+        <table class="data-table" id="voidRosterTable">
+          <thead>
+            <tr>
+              <th class="sortable" data-vcol="category">Product Category <span class="sort-icon">↕</span></th>
+              <th class="sortable" data-vcol="client">Store / Client <span class="sort-icon">↕</span></th>
+              <th class="sortable" data-vcol="salesRep">Sales Rep <span class="sort-icon">↕</span></th>
+              <th class="sortable text-right" data-vcol="tp2Orders">TP2 Preroll Orders <span class="sort-icon">↕</span></th>
+              <th class="sortable text-right" data-vcol="tp2Ordered">TP2 Preroll Rev <span class="sort-icon">↕</span></th>
+            </tr>
+          </thead>
+          <tbody id="voidRosterTableBody">
+            <!-- Populated dynamically -->
+          </tbody>
+          <tfoot id="voidRosterTableFoot">
+            <!-- Populated dynamically -->
+          </tfoot>
+        </table>
+      </div>
+
+      <!-- Void Matrix Table Container -->
+      <div class="table-container" id="voidMatrixContainer" style="display: none;">
+        <table class="data-table" id="voidMatrixTable">
+          <thead id="voidMatrixTableHead">
+            <!-- Populated dynamically with 10 category headers -->
+          </thead>
+          <tbody id="voidMatrixTableBody">
+            <!-- Populated dynamically -->
+          </tbody>
+          <tfoot id="voidMatrixTableFoot">
+            <!-- Populated dynamically -->
+          </tfoot>
+        </table>
+      </div>
+
+      <!-- Voids Pagination Bar -->
+      <div class="pagination-bar" id="voidsPaginationBar">
+        <span id="voidsPaginationInfo">Showing 1 to 50 rows</span>
+        <div class="page-buttons" id="voidsPaginationButtons">
+          <!-- Populated dynamically -->
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="dashboard-footer">
+      <div>VMI Executive Analytics Platform • Source: <code>12wk_v_12wk_preroll_performance.xlsx</code></div>
+      <div>Preroll Period: 05/11/2026 – 11/29/2026</div>
+    </footer>
+  </main>
+
+  <script src="report2.js"></script>
+</body>
+</html>
