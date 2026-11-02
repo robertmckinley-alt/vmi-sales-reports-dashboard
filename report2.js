@@ -27,6 +27,8 @@
   let voidRepFilter = '';
   let voidRosterSortCol = 'salesRep';
   let voidRosterSortAsc = true;
+  let voidMatrixSortCol = 'voidCount';
+  let voidMatrixSortAsc = false;
   let voidPage = 1;
   let voidPageSize = 50;
 
@@ -551,6 +553,17 @@
       clientMatrix.push(c);
     });
 
+    clientMatrix.sort((a, b) => {
+      const valA = a[voidMatrixSortCol];
+      const valB = b[voidMatrixSortCol];
+      if (typeof valA === 'string' || typeof valB === 'string') {
+        const sA = String(valA || '');
+        const sB = String(valB || '');
+        return voidMatrixSortAsc ? sA.localeCompare(sB) : sB.localeCompare(sA);
+      }
+      return voidMatrixSortAsc ? (valA - valB) : (valB - valA);
+    });
+
     const totalCount = clientMatrix.length;
     let startIdx = 0;
     let endIdx = totalCount;
@@ -604,6 +617,13 @@
         <td class="text-right">-</td>
       </tr>
     `;
+
+    document.querySelectorAll('#voidMatrixTable th.sortable').forEach(th => {
+      th.classList.remove('sorted-asc', 'sorted-desc');
+      if (th.getAttribute('data-mcol') === voidMatrixSortCol) {
+        th.classList.add(voidMatrixSortAsc ? 'sorted-asc' : 'sorted-desc');
+      }
+    });
   }
 
   function updateVoidPaginationUI(totalCount, startIdx, endIdx) {
@@ -824,6 +844,20 @@
           voidRosterSortAsc = col === 'category' || col === 'client' || col === 'salesRep';
         }
         renderVoidRosterTable();
+      });
+    });
+
+    // Void Matrix Table Header Sort
+    document.querySelectorAll('#voidMatrixTable th.sortable').forEach(th => {
+      th.addEventListener('click', () => {
+        const col = th.getAttribute('data-mcol');
+        if (voidMatrixSortCol === col) {
+          voidMatrixSortAsc = !voidMatrixSortAsc;
+        } else {
+          voidMatrixSortCol = col;
+          voidMatrixSortAsc = col === 'client' || col === 'salesRep';
+        }
+        renderVoidMatrixTable();
       });
     });
 
