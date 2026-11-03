@@ -42,6 +42,36 @@
       <h2 class="page-hero-title">12-Week Preroll Performance & Latest 12wk Voids</h2>
     </section>
 
+    <!-- Prominent Sales Rep Selector Bar (Sales Reps Only) -->
+    <section class="rep-selector-card" id="prerollRepSelectorCard">
+      <div class="rep-selector-top">
+        <div class="rep-selector-title-group">
+          <span class="rep-selector-icon">👔</span>
+          <div>
+            <h3 class="rep-selector-title">
+              Filter by Sales Rep
+              <span class="period-badge tp2" id="prerollActiveRepBadge">All Sales Reps</span>
+            </h3>
+            <span class="rep-selector-subtitle">Sales Reps Only • Dynamic territory filtering across KPIs, preroll charts, clients, and voids</span>
+          </div>
+        </div>
+        <div class="rep-selector-controls">
+          <label style="font-size: 0.8rem; color: var(--text-secondary); cursor: pointer; display: flex; align-items: center; gap: 0.35rem;">
+            <input type="checkbox" id="chkPrerollIncludeHouse" checked>
+            <span>Include House Lines</span>
+          </label>
+          <select class="select-filter" id="topRepSelect">
+            <option value="">All Sales Reps</option>
+            <!-- Populated dynamically with Sales Reps Only -->
+          </select>
+          <button class="btn btn-secondary" id="btnPrerollResetRepFilter" style="padding: 0.35rem 0.75rem; font-size: 0.775rem;">Reset Filter</button>
+        </div>
+      </div>
+      <div class="rep-selector-pills" id="prerollRepPillsContainer">
+        <!-- Populated dynamically with Sales Reps Only -->
+      </div>
+    </section>
+
     <!-- 5 Executive KPI Cards -->
     <section class="kpi-grid" style="grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));">
       <div class="kpi-card">
@@ -98,13 +128,13 @@
           <span class="delta-badge neutral">10 Categories</span>
         </div>
         <div class="kpi-value" style="font-size: 1.35rem; display: flex; gap: 0.5rem; align-items: baseline;">
-          <span style="color: var(--emerald-text);">+13 G</span>
+          <span style="color: var(--emerald-text);">+14 G</span>
           <span style="color: var(--text-muted); font-weight: 400;">/</span>
           <span style="color: var(--rose-text);">-18 L</span>
         </div>
         <div class="kpi-baseline">
           <span>Total Void Entries: <strong>2,287</strong></span>
-          <span class="tag-badge tag-vmi">401 Stores</span>
+          <span class="tag-badge tag-vmi">404 Stores</span>
         </div>
       </div>
     </section>
@@ -145,10 +175,10 @@
           <div class="card-header">
             <div>
               <h3 class="card-title"><span>🎯</span> Account Gain & Loss Spotlight</h3>
-              <span class="card-subtitle">Newly Acquired Accounts (G: 13) vs Inactive Accounts (L: 18)</span>
+              <span class="card-subtitle">Newly Acquired Accounts (G: 14) vs Inactive Accounts (L: 18)</span>
             </div>
             <div class="nav-links" style="padding: 2px;">
-              <button class="btn btn-primary" id="btnGlGainedToggle" style="padding: 2px 8px; font-size: 0.75rem;">Gained (13)</button>
+              <button class="btn btn-primary" id="btnGlGainedToggle" style="padding: 2px 8px; font-size: 0.75rem;">Gained (14)</button>
               <button class="btn btn-secondary" id="btnGlLostToggle" style="padding: 2px 8px; font-size: 0.75rem;">Lost (18)</button>
             </div>
           </div>
@@ -163,7 +193,7 @@
         <div class="filter-left">
           <input type="text" class="search-input" id="prerollSearchInput" placeholder="🔍 Search store, chain, or rep...">
           <button class="filter-pill active" data-cfilter="all">All (404)</button>
-          <button class="filter-pill" data-cfilter="gained">Gained [G] (13)</button>
+          <button class="filter-pill" data-cfilter="gained">Gained [G] (14)</button>
           <button class="filter-pill" data-cfilter="lost">Lost [L] (18)</button>
           <button class="filter-pill" data-cfilter="vmi">VMI Only</button>
           <button class="filter-pill" data-cfilter="1wt">1WT Only</button>

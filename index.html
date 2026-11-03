@@ -42,6 +42,36 @@
       <h2 class="page-hero-title">13-Week Client & Rep Order Comparison</h2>
     </section>
 
+    <!-- Prominent Sales Rep Selector Bar (Sales Reps Only) -->
+    <section class="rep-selector-card" id="repSelectorCard">
+      <div class="rep-selector-top">
+        <div class="rep-selector-title-group">
+          <span class="rep-selector-icon">👔</span>
+          <div>
+            <h3 class="rep-selector-title">
+              Filter by Sales Rep
+              <span class="period-badge tp2" id="activeRepBadge">All Sales Reps</span>
+            </h3>
+            <span class="rep-selector-subtitle">Sales Reps Only • Dynamic territory filtering across KPIs, charts, and client tables</span>
+          </div>
+        </div>
+        <div class="rep-selector-controls">
+          <label style="font-size: 0.8rem; color: var(--text-secondary); cursor: pointer; display: flex; align-items: center; gap: 0.35rem;">
+            <input type="checkbox" id="chkIncludeHouse" checked>
+            <span>Include House Lines</span>
+          </label>
+          <select class="select-filter" id="repDropdownSelect">
+            <option value="">All Sales Reps</option>
+            <!-- Populated dynamically with Sales Reps Only -->
+          </select>
+          <button class="btn btn-secondary" id="btnResetRepFilter" style="padding: 0.35rem 0.75rem; font-size: 0.775rem;">Reset Filter</button>
+        </div>
+      </div>
+      <div class="rep-selector-pills" id="repPillsContainer">
+        <!-- Populated dynamically with Sales Reps Only -->
+      </div>
+    </section>
+
     <!-- 4 Executive KPI Cards -->
     <section class="kpi-grid">
       <div class="kpi-card">
@@ -176,7 +206,7 @@
       <div class="tabs-bar">
         <button class="tab-btn active" data-tab="compare">
           <span>🔄</span> 13v13 Comparison Diffs
-          <span class="tab-badge" id="badgeCompareCount">403</span>
+          <span class="tab-badge" id="badgeCompareCount">412</span>
         </button>
         <button class="tab-btn" data-tab="tp1">
           <span>📅</span> Period 1: 05/04/2026 – 08/02/2026
@@ -228,7 +258,7 @@
 
       <!-- Pagination Info and Buttons -->
       <div class="pagination-bar" id="paginationBar">
-        <span id="paginationInfo">Showing 1 to 50 of 403 rows</span>
+        <span id="paginationInfo">Showing 1 to 50 of 412 rows</span>
         <div class="page-buttons" id="paginationButtons">
           <!-- Populated dynamically -->
         </div>

@@ -1,16 +1,20 @@
 /**
  * report2.js
  * Logic for Page 2: 12-Week vs. 12-Week Preroll Performance & Latest 12wk Voids.
+ * Supports prominent Sales-Rep-only selector, dynamic sticky tfoot totals, and client mismatch badging.
  */
 
 (function () {
   let reportData = null;
   let activeMainView = 'clients'; // 'clients' | 'voids'
 
+  // Sales Rep filtering state (Sales Reps Only - NO VMI-only reps)
+  let selectedRep = '';
+  let includeHouse = true;
+
   // Clients view state
   let clientFilter = 'all'; // 'all' | 'gained' | 'lost' | 'vmi' | '1wt' | 'gainers' | 'decliners'
   let clientSearchQuery = '';
-  let clientRepFilter = '';
   let clientSortCol = 'revDiff';
   let clientSortAsc = true;
   let clientPage = 1;
@@ -24,7 +28,6 @@
   let voidMode = 'roster'; // 'roster' | 'matrix'
   let voidSearchQuery = '';
   let voidCategoryFilter = '';
-  let voidRepFilter = '';
   let voidRosterSortCol = 'salesRep';
   let voidRosterSortAsc = true;
   let voidMatrixSortCol = 'voidCount';
@@ -38,9 +41,9 @@
     try {
       const data = await window.VMI.loadData();
       reportData = data.report2;
-      renderKpis();
-      populateRepDropdowns();
+      populateRepSelector();
       populateCategoryDropdown();
+      renderKpis();
       renderPrerollGainersChart();
       renderGlSpotlightChart();
       renderCategoryVoidsChart();
@@ -55,76 +58,147 @@
     }
   }
 
-  function renderKpis() {
-    const tp1 = reportData.tp1Total;
-    const tp2 = reportData.tp2Total;
-    const cmp = reportData.compareTotal;
-
-    // Orders
-    const ordPct = tp1.orders ? ((tp2.orders - tp1.orders) / tp1.orders) * 100 : 0;
-    document.getElementById('kpiPrerollOrdersTP2').textContent = window.VMI.fmtInt(tp2.orders);
-    document.getElementById('kpiPrerollOrdersTP1').textContent = window.VMI.fmtInt(tp1.orders);
-    document.getElementById('kpiPrerollOrdersDelta').textContent = `${window.VMI.fmtSignedInt(cmp.orderDiff)} (${window.VMI.fmtPct(ordPct)})`;
-    document.getElementById('kpiPrerollOrdersDelta').className = `delta-badge ${cmp.orderDiff >= 0 ? 'pos' : 'neg'}`;
-    document.getElementById('kpiPrerollOrdersDiffText').textContent = `${window.VMI.fmtSignedInt(cmp.orderDiff)} diff`;
-
-    // Revenue
-    const revPct = tp1.ordered ? ((tp2.ordered - tp1.ordered) / tp1.ordered) * 100 : 0;
-    document.getElementById('kpiPrerollRevTP2').textContent = window.VMI.fmtCurrency(tp2.ordered);
-    document.getElementById('kpiPrerollRevTP1').textContent = window.VMI.fmtCurrency(tp1.ordered);
-    document.getElementById('kpiPrerollRevDelta').textContent = `${window.VMI.fmtSignedCurrency(cmp.revDiff)} (${window.VMI.fmtPct(revPct)})`;
-    document.getElementById('kpiPrerollRevDelta').className = `delta-badge ${cmp.revDiff >= 0 ? 'pos' : 'neg'}`;
-    document.getElementById('kpiPrerollRevDiffText').textContent = window.VMI.fmtSignedCurrency(cmp.revDiff);
-
-    // Units
-    const unitPct = tp1.units ? ((tp2.units - tp1.units) / tp1.units) * 100 : 0;
-    document.getElementById('kpiPrerollUnitsTP2').textContent = window.VMI.fmtInt(tp2.units);
-    document.getElementById('kpiPrerollUnitsTP1').textContent = window.VMI.fmtInt(tp1.units);
-    document.getElementById('kpiPrerollUnitsDelta').textContent = `${window.VMI.fmtSignedInt(cmp.unitDiff)} (${window.VMI.fmtPct(unitPct)})`;
-    document.getElementById('kpiPrerollUnitsDelta').className = `delta-badge ${cmp.unitDiff >= 0 ? 'pos' : 'neg'}`;
-    document.getElementById('kpiPrerollUnitsDiffText').textContent = `${window.VMI.fmtSignedInt(cmp.unitDiff)} diff`;
-
-    // AOV
-    const aovPct = tp1.aov ? ((tp2.aov - tp1.aov) / tp1.aov) * 100 : 0;
-    document.getElementById('kpiPrerollAovTP2').textContent = window.VMI.fmtCurrency(tp2.aov);
-    document.getElementById('kpiPrerollAovTP1').textContent = window.VMI.fmtCurrency(tp1.aov);
-    document.getElementById('kpiPrerollAovDelta').textContent = `${window.VMI.fmtSignedCurrency(cmp.aveDiff)} (${window.VMI.fmtPct(aovPct)})`;
-    document.getElementById('kpiPrerollAovDelta').className = `delta-badge ${cmp.aveDiff >= 0 ? 'pos' : 'neg'}`;
-    document.getElementById('kpiPrerollAovDiffText').textContent = window.VMI.fmtSignedCurrency(cmp.aveDiff);
-
-    // Badges
-    document.getElementById('badgePrerollClientsCount').textContent = window.VMI.fmtInt(reportData.clients.length);
-    document.getElementById('badgeVoidsCount').textContent = window.VMI.fmtInt(reportData.voids.length);
+  // Check if a client matches the active Sales Rep filter
+  function matchesRepFilter(c) {
+    if (!selectedRep) return true;
+    if (includeHouse) {
+      return (c.baseSalesRep && c.baseSalesRep.toLowerCase() === selectedRep.toLowerCase()) ||
+             (c.salesRep && c.salesRep.toLowerCase() === selectedRep.toLowerCase());
+    } else {
+      return c.salesRep && c.salesRep.toLowerCase() === selectedRep.toLowerCase();
+    }
   }
 
-  function populateRepDropdowns() {
-    const reps = new Set();
-    reportData.clients.forEach(c => {
-      if (c.salesRep && c.salesRep !== 'Unassigned') reps.add(c.salesRep);
-    });
-    reportData.voids.forEach(v => {
-      if (v.salesRep && v.salesRep !== '-') reps.add(v.salesRep);
-    });
-    const sortedReps = Array.from(reps).sort();
+  function matchesVoidRepFilter(v) {
+    if (!selectedRep) return true;
+    if (includeHouse) {
+      return (v.baseSalesRep && v.baseSalesRep.toLowerCase() === selectedRep.toLowerCase()) ||
+             (v.salesRep && v.salesRep.toLowerCase() === selectedRep.toLowerCase());
+    } else {
+      return v.salesRep && v.salesRep.toLowerCase() === selectedRep.toLowerCase();
+    }
+  }
 
+  function populateRepSelector() {
+    const pillsContainer = document.getElementById('prerollRepPillsContainer');
+    const topDropdown = document.getElementById('topRepSelect');
     const clientRepSel = document.getElementById('prerollRepSelect');
     const voidRepSel = document.getElementById('voidsRepSelect');
 
-    sortedReps.forEach(r => {
-      const opt1 = document.createElement('option');
-      opt1.value = r;
-      opt1.textContent = r;
-      clientRepSel.appendChild(opt1);
+    const availableReps = reportData.availableSalesReps || [
+      'Scotland Schieber',
+      'Jeremy Schmidt',
+      'Ashlea Underwood',
+      'Danny Thoren',
+      'Caitlin Stoner',
+      'Nancy Drinkard WA',
+      'Johnny Wilson'
+    ];
 
-      const opt2 = document.createElement('option');
-      opt2.value = r;
-      opt2.textContent = r;
-      voidRepSel.appendChild(opt2);
+    // Count stores per base rep
+    const storeCounts = {};
+    reportData.clients.forEach(c => {
+      const b = c.baseSalesRep;
+      if (b) storeCounts[b] = (storeCounts[b] || 0) + 1;
     });
+
+    // 1. Build Pills
+    if (pillsContainer) {
+      let pillsHtml = `
+        <button class="rep-pill ${selectedRep === '' ? 'active' : ''}" data-prep="">
+          <span>All Sales Reps</span>
+          <span class="rep-pill-count">${reportData.clients.length}</span>
+        </button>
+      `;
+      availableReps.forEach(rep => {
+        const cnt = storeCounts[rep] || 0;
+        pillsHtml += `
+          <button class="rep-pill ${selectedRep === rep ? 'active' : ''}" data-prep="${window.VMI.escapeHtml(rep)}">
+            <span>${window.VMI.escapeHtml(rep)}</span>
+            <span class="rep-pill-count">${cnt}</span>
+          </button>
+        `;
+      });
+      pillsContainer.innerHTML = pillsHtml;
+    }
+
+    // 2. Build Top Dropdown
+    if (topDropdown) {
+      let dHtml = `<option value="">All Sales Reps (Full Preroll Territory)</option>`;
+      dHtml += `<optgroup label="Consolidated Sales Reps (Full Book)">`;
+      availableReps.forEach(rep => {
+        dHtml += `<option value="${window.VMI.escapeHtml(rep)}">${window.VMI.escapeHtml(rep)} (${storeCounts[rep] || 0} stores)</option>`;
+      });
+      dHtml += `</optgroup>`;
+
+      // Exact lines
+      const exactLines = new Set();
+      reportData.clients.forEach(c => {
+        if (c.salesRep && c.salesRep !== 'Unassigned' && c.salesRep !== '-') exactLines.add(c.salesRep);
+      });
+      dHtml += `<optgroup label="Exact Territory / House Lines">`;
+      Array.from(exactLines).sort().forEach(line => {
+        dHtml += `<option value="${window.VMI.escapeHtml(line)}">${window.VMI.escapeHtml(line)}</option>`;
+      });
+      dHtml += `</optgroup>`;
+      topDropdown.innerHTML = dHtml;
+    }
+
+    // 3. Populate existing inline dropdowns
+    const sortedReps = Array.from(new Set(reportData.clients.map(c => c.salesRep).filter(r => r && r !== 'Unassigned' && r !== '-'))).sort();
+    [clientRepSel, voidRepSel].forEach(sel => {
+      if (!sel) return;
+      sel.innerHTML = `<option value="">All Sales Reps</option>`;
+      sortedReps.forEach(r => {
+        const opt = document.createElement('option');
+        opt.value = r;
+        opt.textContent = r;
+        sel.appendChild(opt);
+      });
+    });
+  }
+
+  function setPrerollRepFilter(rep) {
+    selectedRep = rep;
+
+    // Update pills
+    document.querySelectorAll('#prerollRepPillsContainer .rep-pill').forEach(pill => {
+      const pRep = pill.getAttribute('data-prep');
+      if (pRep === selectedRep) pill.classList.add('active');
+      else pill.classList.remove('active');
+    });
+
+    // Synchronize all dropdowns
+    const topDropdown = document.getElementById('topRepSelect');
+    const clientRepSel = document.getElementById('prerollRepSelect');
+    const voidRepSel = document.getElementById('voidsRepSelect');
+    if (topDropdown) topDropdown.value = selectedRep;
+    if (clientRepSel) clientRepSel.value = selectedRep;
+    if (voidRepSel) voidRepSel.value = selectedRep;
+
+    // Update active badge in header
+    const badge = document.getElementById('prerollActiveRepBadge');
+    if (badge) {
+      badge.textContent = selectedRep ? selectedRep : 'All Sales Reps';
+      badge.className = `period-badge ${selectedRep ? 'tp1' : 'tp2'}`;
+    }
+
+    clientPage = 1;
+    voidPage = 1;
+    renderKpis();
+    renderPrerollGainersChart();
+    renderGlSpotlightChart();
+    renderCategoryVoidsChart();
+    renderRepsVoidsChart();
+    renderPrerollClientTable();
+    if (voidMode === 'roster') renderVoidRosterTable();
+    else renderVoidMatrixTable();
   }
 
   function populateCategoryDropdown() {
     const catSel = document.getElementById('voidsCategorySelect');
+    if (!catSel) return;
+    catSel.innerHTML = `<option value="">All 10 Categories</option>`;
     reportData.categoriesSummary.forEach(c => {
       const opt = document.createElement('option');
       opt.value = c.category;
@@ -133,9 +207,108 @@
     });
   }
 
+  function renderKpis() {
+    let tp1Orders = 0, tp1Rev = 0, tp1Units = 0;
+    let tp2Orders = 0, tp2Rev = 0, tp2Units = 0;
+    let gCount = 0, lCount = 0, totalVoids = 0;
+
+    if (!selectedRep) {
+      tp1Orders = reportData.tp1Total.orders;
+      tp1Rev = reportData.tp1Total.ordered;
+      tp1Units = reportData.tp1Total.units;
+      tp2Orders = reportData.tp2Total.orders;
+      tp2Rev = reportData.tp2Total.ordered;
+      tp2Units = reportData.tp2Total.units;
+      gCount = reportData.clients.filter(c => c.gl === 'G').length;
+      lCount = reportData.clients.filter(c => c.gl === 'L').length;
+      totalVoids = reportData.voids.length;
+    } else {
+      const scopedClients = reportData.clients.filter(matchesRepFilter);
+      scopedClients.forEach(c => {
+        tp1Orders += c.tp1Orders;
+        tp1Rev += c.tp1Ordered;
+        tp1Units += c.tp1Units;
+        tp2Orders += c.tp2Orders;
+        tp2Rev += c.tp2Ordered;
+        tp2Units += c.tp2Units;
+        if (c.gl === 'G') gCount++;
+        if (c.gl === 'L') lCount++;
+      });
+      tp1Rev = round2(tp1Rev);
+      tp2Rev = round2(tp2Rev);
+
+      const scopedVoids = reportData.voids.filter(matchesVoidRepFilter);
+      totalVoids = scopedVoids.length;
+    }
+
+    const tp1Aov = tp1Orders ? round2(tp1Rev / tp1Orders) : 0;
+    const tp2Aov = tp2Orders ? round2(tp2Rev / tp2Orders) : 0;
+
+    const orderDiff = tp2Orders - tp1Orders;
+    const revDiff = round2(tp2Rev - tp1Rev);
+    const unitDiff = tp2Units - tp1Units;
+    const aovDiff = round2(tp2Aov - tp1Aov);
+
+    // Orders
+    const ordPct = tp1Orders ? ((tp2Orders - tp1Orders) / tp1Orders) * 100 : 0;
+    document.getElementById('kpiPrerollOrdersTP2').textContent = window.VMI.fmtInt(tp2Orders);
+    document.getElementById('kpiPrerollOrdersTP1').textContent = window.VMI.fmtInt(tp1Orders);
+    document.getElementById('kpiPrerollOrdersDelta').textContent = `${window.VMI.fmtSignedInt(orderDiff)} (${window.VMI.fmtPct(ordPct)})`;
+    document.getElementById('kpiPrerollOrdersDelta').className = `delta-badge ${orderDiff >= 0 ? 'pos' : 'neg'}`;
+    document.getElementById('kpiPrerollOrdersDiffText').textContent = `${window.VMI.fmtSignedInt(orderDiff)} diff`;
+
+    // Revenue
+    const revPct = tp1Rev ? ((tp2Rev - tp1Rev) / tp1Rev) * 100 : 0;
+    document.getElementById('kpiPrerollRevTP2').textContent = window.VMI.fmtCurrency(tp2Rev);
+    document.getElementById('kpiPrerollRevTP1').textContent = window.VMI.fmtCurrency(tp1Rev);
+    document.getElementById('kpiPrerollRevDelta').textContent = `${window.VMI.fmtSignedCurrency(revDiff)} (${window.VMI.fmtPct(revPct)})`;
+    document.getElementById('kpiPrerollRevDelta').className = `delta-badge ${revDiff >= 0 ? 'pos' : 'neg'}`;
+    document.getElementById('kpiPrerollRevDiffText').textContent = window.VMI.fmtSignedCurrency(revDiff);
+
+    // Units
+    const unitPct = tp1Units ? ((tp2Units - tp1Units) / tp1Units) * 100 : 0;
+    document.getElementById('kpiPrerollUnitsTP2').textContent = window.VMI.fmtInt(tp2Units);
+    document.getElementById('kpiPrerollUnitsTP1').textContent = window.VMI.fmtInt(tp1Units);
+    document.getElementById('kpiPrerollUnitsDelta').textContent = `${window.VMI.fmtSignedInt(unitDiff)} (${window.VMI.fmtPct(unitPct)})`;
+    document.getElementById('kpiPrerollUnitsDelta').className = `delta-badge ${unitDiff >= 0 ? 'pos' : 'neg'}`;
+    document.getElementById('kpiPrerollUnitsDiffText').textContent = `${window.VMI.fmtSignedInt(unitDiff)} diff`;
+
+    // AOV
+    const aovPct = tp1Aov ? ((tp2Aov - tp1Aov) / tp1Aov) * 100 : 0;
+    document.getElementById('kpiPrerollAovTP2').textContent = window.VMI.fmtCurrency(tp2Aov);
+    document.getElementById('kpiPrerollAovTP1').textContent = window.VMI.fmtCurrency(tp1Aov);
+    document.getElementById('kpiPrerollAovDelta').textContent = `${window.VMI.fmtSignedCurrency(aovDiff)} (${window.VMI.fmtPct(aovPct)})`;
+    document.getElementById('kpiPrerollAovDelta').className = `delta-badge ${aovDiff >= 0 ? 'pos' : 'neg'}`;
+    document.getElementById('kpiPrerollAovDiffText').textContent = window.VMI.fmtSignedCurrency(aovDiff);
+
+    // Dynamic Account Dynamics & Voids Card
+    const glValueEl = document.querySelector('.kpi-card:nth-child(5) .kpi-value');
+    if (glValueEl) {
+      glValueEl.innerHTML = `
+        <span style="color: var(--emerald-text);">+${gCount} G</span>
+        <span style="color: var(--text-muted); font-weight: 400;">/</span>
+        <span style="color: var(--rose-text);">-${lCount} L</span>
+      `;
+    }
+    const glBaselineEl = document.querySelector('.kpi-card:nth-child(5) .kpi-baseline');
+    if (glBaselineEl) {
+      const activeStores = reportData.clients.filter(matchesRepFilter).length;
+      glBaselineEl.innerHTML = `
+        <span>Total Void Entries: <strong>${window.VMI.fmtInt(totalVoids)}</strong></span>
+        <span class="tag-badge tag-vmi">${activeStores} Stores</span>
+      `;
+    }
+
+    // Badges on view buttons
+    const scopedClientCount = reportData.clients.filter(matchesRepFilter).length;
+    document.getElementById('badgePrerollClientsCount').textContent = window.VMI.fmtInt(scopedClientCount);
+    document.getElementById('badgeVoidsCount').textContent = window.VMI.fmtInt(totalVoids);
+  }
+
   function renderPrerollGainersChart() {
     const container = document.getElementById('prerollGainersChartContainer');
-    const sorted = [...reportData.clients].sort((a, b) => b.revDiff - a.revDiff);
+    const filteredList = reportData.clients.filter(matchesRepFilter);
+    const sorted = [...filteredList].sort((a, b) => b.revDiff - a.revDiff);
     const gainers = sorted.slice(0, 10);
     const decliners = sorted.slice(-10).reverse();
 
@@ -143,64 +316,85 @@
     const maxVal = Math.max(...currentList.map(c => Math.abs(c.revDiff)), 1);
 
     let html = '';
-    currentList.forEach(c => {
-      const pct = ((Math.abs(c.revDiff) / maxVal) * 100).toFixed(1);
-      const isPos = c.revDiff >= 0;
-      const fillClass = isPos ? 'pos' : 'neg';
-      const textClass = isPos ? 'num-pos' : 'num-neg';
-      html += `
-        <div class="chart-row">
-          <div class="chart-row-meta">
-            <span class="chart-row-label" title="${window.VMI.escapeHtml(c.client)}">${window.VMI.escapeHtml(c.client)}</span>
-            <span class="chart-row-vals">
-              <span class="${textClass}">${window.VMI.fmtSignedCurrency(c.revDiff)}</span>
-            </span>
+    if (currentList.length === 0) {
+      html = `<div style="text-align: center; color: var(--text-muted); padding: 2rem;">No stores match current filter.</div>`;
+    } else {
+      currentList.forEach(c => {
+        const pct = ((Math.abs(c.revDiff) / maxVal) * 100).toFixed(1);
+        const isPos = c.revDiff >= 0;
+        const fillClass = isPos ? 'pos' : 'neg';
+        const textClass = isPos ? 'num-pos' : 'num-neg';
+        html += `
+          <div class="chart-row">
+            <div class="chart-row-meta">
+              <span class="chart-row-label" title="${window.VMI.escapeHtml(c.client)}">${window.VMI.escapeHtml(c.client)}</span>
+              <span class="chart-row-vals">
+                <span class="${textClass}">${window.VMI.fmtSignedCurrency(c.revDiff)}</span>
+              </span>
+            </div>
+            <div class="bar-track">
+              <div class="bar-fill ${fillClass}" style="width: ${pct}%;"></div>
+            </div>
           </div>
-          <div class="bar-track">
-            <div class="bar-fill ${fillClass}" style="width: ${pct}%;"></div>
-          </div>
-        </div>
-      `;
-    });
+        `;
+      });
+    }
     container.innerHTML = html;
   }
 
   function renderGlSpotlightChart() {
     const container = document.getElementById('glSpotlightContainer');
-    const gained = reportData.clients.filter(c => c.gl === 'G').sort((a, b) => b.tp2Ordered - a.tp2Ordered);
-    const lost = reportData.clients.filter(c => c.gl === 'L').sort((a, b) => b.tp1Ordered - a.tp1Ordered);
+    const filteredList = reportData.clients.filter(matchesRepFilter);
+    const gained = filteredList.filter(c => c.gl === 'G').sort((a, b) => b.tp2Ordered - a.tp2Ordered);
+    const lost = filteredList.filter(c => c.gl === 'L').sort((a, b) => b.tp1Ordered - a.tp1Ordered);
 
     const currentList = glSpotlightMode === 'gained' ? gained : lost;
     const maxVal = Math.max(...currentList.map(c => glSpotlightMode === 'gained' ? c.tp2Ordered : c.tp1Ordered), 1);
 
     let html = '';
-    currentList.forEach(c => {
-      const val = glSpotlightMode === 'gained' ? c.tp2Ordered : c.tp1Ordered;
-      const ords = glSpotlightMode === 'gained' ? c.tp2Orders : c.tp1Orders;
-      const pct = ((val / maxVal) * 100).toFixed(1);
-      const fillClass = glSpotlightMode === 'gained' ? 'pos' : 'neg';
-      const textClass = glSpotlightMode === 'gained' ? 'num-pos' : 'num-neg';
-      html += `
-        <div class="chart-row">
-          <div class="chart-row-meta">
-            <span class="chart-row-label" title="${window.VMI.escapeHtml(c.client)}">${window.VMI.escapeHtml(c.client)}</span>
-            <span class="chart-row-vals">
-              <span>${ords} ords</span>
-              <span class="${textClass}">${window.VMI.fmtCurrency(val)}</span>
-            </span>
+    if (currentList.length === 0) {
+      html = `<div style="text-align: center; color: var(--text-muted); padding: 2rem;">No ${glSpotlightMode === 'gained' ? 'acquired' : 'lost'} accounts for active filter.</div>`;
+    } else {
+      currentList.forEach(c => {
+        const val = glSpotlightMode === 'gained' ? c.tp2Ordered : c.tp1Ordered;
+        const ords = glSpotlightMode === 'gained' ? c.tp2Orders : c.tp1Orders;
+        const pct = ((val / maxVal) * 100).toFixed(1);
+        const fillClass = glSpotlightMode === 'gained' ? 'pos' : 'neg';
+        const textClass = glSpotlightMode === 'gained' ? 'num-pos' : 'num-neg';
+        html += `
+          <div class="chart-row">
+            <div class="chart-row-meta">
+              <span class="chart-row-label" title="${window.VMI.escapeHtml(c.client)}">${window.VMI.escapeHtml(c.client)}</span>
+              <span class="chart-row-vals">
+                <span>${ords} ords</span>
+                <span class="${textClass}">${window.VMI.fmtCurrency(val)}</span>
+              </span>
+            </div>
+            <div class="bar-track">
+              <div class="bar-fill ${fillClass}" style="width: ${pct}%;"></div>
+            </div>
           </div>
-          <div class="bar-track">
-            <div class="bar-fill ${fillClass}" style="width: ${pct}%;"></div>
-          </div>
-        </div>
-      `;
-    });
+        `;
+      });
+    }
     container.innerHTML = html;
   }
 
   function renderCategoryVoidsChart() {
     const container = document.getElementById('categoryVoidsChartContainer');
-    const sorted = [...reportData.categoriesSummary].sort((a, b) => b.storeCount - a.storeCount);
+    const scopedVoids = reportData.voids.filter(matchesVoidRepFilter);
+
+    // Count voids per category
+    const catCounts = {};
+    reportData.categoriesSummary.forEach(c => { catCounts[c.category] = 0; });
+    scopedVoids.forEach(v => {
+      catCounts[v.category] = (catCounts[v.category] || 0) + 1;
+    });
+
+    const sorted = Object.entries(catCounts)
+      .map(([category, storeCount]) => ({ category, storeCount }))
+      .sort((a, b) => b.storeCount - a.storeCount);
+
     const maxVal = Math.max(...sorted.map(c => c.storeCount), 1);
 
     let html = '';
@@ -211,7 +405,7 @@
           <div class="chart-row-meta">
             <span class="chart-row-label">${window.VMI.escapeHtml(c.category)}</span>
             <span class="chart-row-vals">
-              <span class="num-neg">${window.VMI.fmtInt(c.storeCount)} stores</span>
+              <span class="num-neg">${window.VMI.fmtInt(c.storeCount)} voids</span>
             </span>
           </div>
           <div class="bar-track">
@@ -231,10 +425,13 @@
     let html = '';
     sorted.forEach(r => {
       const pct = ((r.voidCount / maxVal) * 100).toFixed(1);
+      const isSelected = selectedRep && (r.rep.toLowerCase() === selectedRep.toLowerCase() || (r.baseRep && r.baseRep.toLowerCase() === selectedRep.toLowerCase()));
+      const selectedStyle = isSelected ? 'background: rgba(6, 182, 212, 0.12); border-left: 3px solid var(--cyan-light); padding-left: 4px; border-radius: 4px;' : '';
+
       html += `
-        <div class="chart-row">
+        <div class="chart-row" style="${selectedStyle} cursor: pointer;" data-voidrepclick="${window.VMI.escapeHtml(r.baseRep || r.rep)}">
           <div class="chart-row-meta">
-            <span class="chart-row-label">${window.VMI.escapeHtml(r.rep)}</span>
+            <span class="chart-row-label"><strong>${window.VMI.escapeHtml(r.rep)}</strong></span>
             <span class="chart-row-vals">
               <span>${r.uniqueStores} stores</span>
               <span style="color: var(--cyan-light); font-weight:700;">${r.voidCount} voids</span>
@@ -247,15 +444,25 @@
       `;
     });
     container.innerHTML = html;
+
+    container.querySelectorAll('[data-voidrepclick]').forEach(el => {
+      el.addEventListener('click', () => {
+        const rep = el.getAttribute('data-voidrepclick');
+        setPrerollRepFilter(selectedRep === rep ? '' : rep);
+      });
+    });
   }
 
   // ================= VIEW 1 CLIENT TABLE LOGIC =================
   function getFilteredPrerollClients() {
     return reportData.clients.filter(c => {
-      // Search
+      // Sales Rep Filter
+      if (!matchesRepFilter(c)) return false;
+
+      // Search Query
       if (clientSearchQuery) {
         const q = clientSearchQuery.toLowerCase();
-        const clientMatch = c.client.toLowerCase().includes(q) || (c.tp1Client && c.tp1Client.toLowerCase().includes(q));
+        const clientMatch = c.client.toLowerCase().includes(q) || (c.tp1Client && c.tp1Client.toLowerCase().includes(q)) || (c.tp2Client && c.tp2Client.toLowerCase().includes(q));
         const repMatch = c.salesRep && c.salesRep.toLowerCase().includes(q);
         const chainMatch = c.chainCode && c.chainCode.toLowerCase().includes(q);
         if (!clientMatch && !repMatch && !chainMatch) return false;
@@ -268,9 +475,6 @@
       if (clientFilter === '1wt' && !c.is1Wt) return false;
       if (clientFilter === 'gainers' && c.revDiff <= 0) return false;
       if (clientFilter === 'decliners' && c.revDiff >= 0) return false;
-
-      // Rep filter
-      if (clientRepFilter && c.salesRep !== clientRepFilter) return false;
 
       return true;
     }).sort((a, b) => {
@@ -319,7 +523,11 @@
 
         let mismatchTag = '';
         if (r.clientMismatch) {
-          mismatchTag = `<span class="tag-badge tag-mismatch" title="Raw Col A held Clutch Cannabis while Col F held actual store name">TP1 col: ${window.VMI.escapeHtml(r.tp1Client)}</span>`;
+          if (r.tp1Orders === 0 && r.tp2Client) {
+            mismatchTag = `<span class="tag-badge tag-mismatch" title="Raw Col A held ${r.tp1Client} while Col F held ${r.tp2Client}">Resolved: ${window.VMI.escapeHtml(r.tp2Client)}</span>`;
+          } else {
+            mismatchTag = `<span class="tag-badge tag-mismatch" title="TP1: ${r.tp1Client} ↔ TP2: ${r.tp2Client}">TP1: ${window.VMI.escapeHtml(r.tp1Client)} ↔ TP2: ${window.VMI.escapeHtml(r.tp2Client)}</span>`;
+          }
         }
 
         html += `
@@ -328,7 +536,7 @@
               <div style="font-weight: 600;">${window.VMI.escapeHtml(r.client)}</div>
               <div>${badges} ${mismatchTag}</div>
             </td>
-            <td><span class="tag-badge tag-chain">${window.VMI.escapeHtml(r.salesRep || 'Unassigned')}</span></td>
+            <td><span class="tag-badge tag-rep">${window.VMI.escapeHtml(r.salesRep || 'Unassigned')}</span></td>
             <td class="text-right">${window.VMI.fmtInt(r.tp1Orders)}</td>
             <td class="text-right">${window.VMI.fmtCurrency(r.tp1Ordered)}</td>
             <td class="text-right">${window.VMI.fmtInt(r.tp1Units)}</td>
@@ -350,27 +558,49 @@
     }
     tbody.innerHTML = html;
 
-    // TFoot totals from reportData
-    const tp1 = reportData.tp1Total;
-    const tp2 = reportData.tp2Total;
-    const cmp = reportData.compareTotal;
+    // Dynamic Sticky TFoot totals
+    let fTp1Ord = 0, fTp1Rev = 0, fTp1Unt = 0;
+    let fTp2Ord = 0, fTp2Rev = 0, fTp2Unt = 0;
+    let fVoids = 0;
+
+    filtered.forEach(r => {
+      fTp1Ord += r.tp1Orders;
+      fTp1Rev += r.tp1Ordered;
+      fTp1Unt += r.tp1Units;
+      fTp2Ord += r.tp2Orders;
+      fTp2Rev += r.tp2Ordered;
+      fTp2Unt += r.tp2Units;
+      fVoids += (r.voidCount || 0);
+    });
+
+    fTp1Rev = round2(fTp1Rev);
+    fTp2Rev = round2(fTp2Rev);
+    const fTp1Aov = fTp1Ord ? round2(fTp1Rev / fTp1Ord) : 0;
+    const fTp2Aov = fTp2Ord ? round2(fTp2Rev / fTp2Ord) : 0;
+    const fOrdDiff = fTp2Ord - fTp1Ord;
+    const fRevDiff = round2(fTp2Rev - fTp1Rev);
+    const fUntDiff = fTp2Unt - fTp1Unt;
+    const fAovDiff = round2(fTp2Aov - fTp1Aov);
+
+    const label = (selectedRep || clientFilter !== 'all' || clientSearchQuery) ? `Filtered Total:` : `Total:`;
+
     tfoot.innerHTML = `
       <tr>
-        <td><strong>Total:</strong></td>
-        <td>404 accounts</td>
-        <td class="text-right">${window.VMI.fmtInt(tp1.orders)}</td>
-        <td class="text-right">${window.VMI.fmtCurrency(tp1.ordered)}</td>
-        <td class="text-right">${window.VMI.fmtInt(tp1.units)}</td>
-        <td class="text-right">${window.VMI.fmtCurrency(tp1.aov)}</td>
-        <td class="text-right">${window.VMI.fmtInt(tp2.orders)}</td>
-        <td class="text-right">${window.VMI.fmtCurrency(tp2.ordered)}</td>
-        <td class="text-right">${window.VMI.fmtInt(tp2.units)}</td>
-        <td class="text-right">${window.VMI.fmtCurrency(tp2.aov)}</td>
-        <td class="text-right ${cmp.orderDiff >= 0 ? 'num-pos' : 'num-neg'}">${window.VMI.fmtSignedInt(cmp.orderDiff)}</td>
-        <td class="text-right ${cmp.revDiff >= 0 ? 'num-pos' : 'num-neg'}">${window.VMI.fmtSignedCurrency(cmp.revDiff)}</td>
-        <td class="text-right ${cmp.unitDiff >= 0 ? 'num-pos' : 'num-neg'}">${window.VMI.fmtSignedInt(cmp.unitDiff)}</td>
-        <td class="text-right ${cmp.aveDiff >= 0 ? 'num-pos' : 'num-neg'}">${window.VMI.fmtSignedCurrency(cmp.aveDiff)}</td>
-        <td class="text-center"><strong>2,287</strong></td>
+        <td><strong>${label}</strong></td>
+        <td>${totalCount} accounts</td>
+        <td class="text-right">${window.VMI.fmtInt(fTp1Ord)}</td>
+        <td class="text-right">${window.VMI.fmtCurrency(fTp1Rev)}</td>
+        <td class="text-right">${window.VMI.fmtInt(fTp1Unt)}</td>
+        <td class="text-right">${window.VMI.fmtCurrency(fTp1Aov)}</td>
+        <td class="text-right">${window.VMI.fmtInt(fTp2Ord)}</td>
+        <td class="text-right">${window.VMI.fmtCurrency(fTp2Rev)}</td>
+        <td class="text-right">${window.VMI.fmtInt(fTp2Unt)}</td>
+        <td class="text-right">${window.VMI.fmtCurrency(fTp2Aov)}</td>
+        <td class="text-right ${fOrdDiff >= 0 ? 'num-pos' : 'num-neg'}">${window.VMI.fmtSignedInt(fOrdDiff)}</td>
+        <td class="text-right ${fRevDiff >= 0 ? 'num-pos' : 'num-neg'}">${window.VMI.fmtSignedCurrency(fRevDiff)}</td>
+        <td class="text-right ${fUntDiff >= 0 ? 'num-pos' : 'num-neg'}">${window.VMI.fmtSignedInt(fUntDiff)}</td>
+        <td class="text-right ${fAovDiff >= 0 ? 'num-pos' : 'num-neg'}">${window.VMI.fmtSignedCurrency(fAovDiff)}</td>
+        <td class="text-center"><strong>${window.VMI.fmtInt(fVoids)}</strong></td>
       </tr>
     `;
 
@@ -433,6 +663,8 @@
   // ================= VIEW 2 VOIDS LOGIC =================
   function getFilteredVoidRoster() {
     return reportData.voids.filter(v => {
+      if (!matchesVoidRepFilter(v)) return false;
+
       if (voidSearchQuery) {
         const q = voidSearchQuery.toLowerCase();
         const clientMatch = v.client.toLowerCase().includes(q);
@@ -442,7 +674,6 @@
         if (!clientMatch && !repMatch && !catMatch && !chainMatch) return false;
       }
       if (voidCategoryFilter && v.category !== voidCategoryFilter) return false;
-      if (voidRepFilter && v.salesRep !== voidRepFilter) return false;
       return true;
     }).sort((a, b) => {
       let v1 = a[voidRosterSortCol];
@@ -489,7 +720,7 @@
               <div style="font-weight: 600;">${window.VMI.escapeHtml(v.client)}</div>
               <div>${badges}</div>
             </td>
-            <td><span class="tag-badge tag-chain">${window.VMI.escapeHtml(v.salesRep || '-')}</span></td>
+            <td><span class="tag-badge tag-rep">${window.VMI.escapeHtml(v.salesRep || '-')}</span></td>
             <td class="text-right">${window.VMI.fmtInt(v.tp2Orders)}</td>
             <td class="text-right">${window.VMI.fmtCurrency(v.tp2Ordered)}</td>
           </tr>
@@ -537,17 +768,16 @@
     const tfoot = document.getElementById('voidMatrixTableFoot');
     const categories = reportData.categoriesSummary.map(c => c.category);
 
-    // Group voids by client
     const clientMatrix = [];
     reportData.clients.forEach(c => {
-      // Filter matching
+      if (!matchesRepFilter(c)) return;
+
       if (voidSearchQuery) {
         const q = voidSearchQuery.toLowerCase();
         const clientMatch = c.client.toLowerCase().includes(q);
         const repMatch = c.salesRep && c.salesRep.toLowerCase().includes(q);
         if (!clientMatch && !repMatch) return;
       }
-      if (voidRepFilter && c.salesRep !== voidRepFilter) return;
       if (voidCategoryFilter && !c.voidCategories.includes(voidCategoryFilter)) return;
 
       clientMatrix.push(c);
@@ -598,7 +828,7 @@
               <div style="font-weight: 600;">${window.VMI.escapeHtml(c.client)}</div>
               <div>${badges}</div>
             </td>
-            <td><span class="tag-badge tag-chain">${window.VMI.escapeHtml(c.salesRep || 'Unassigned')}</span></td>
+            <td><span class="tag-badge tag-rep">${window.VMI.escapeHtml(c.salesRep || 'Unassigned')}</span></td>
             ${catCells}
             <td class="text-center"><strong>${c.voidCount}</strong> / 10</td>
             <td class="text-right">${window.VMI.fmtCurrency(c.tp2Ordered)}</td>
@@ -676,6 +906,63 @@
   }
 
   function bindEvents() {
+    // Top Sales Rep Selector Pills
+    const repPillsContainer = document.getElementById('prerollRepPillsContainer');
+    if (repPillsContainer) {
+      repPillsContainer.addEventListener('click', (e) => {
+        const pill = e.target.closest('.rep-pill');
+        if (!pill) return;
+        const rep = pill.getAttribute('data-prep');
+        setPrerollRepFilter(rep);
+      });
+    }
+
+    // Top Sales Rep Dropdown
+    const topRepSelect = document.getElementById('topRepSelect');
+    if (topRepSelect) {
+      topRepSelect.addEventListener('change', (e) => {
+        setPrerollRepFilter(e.target.value);
+      });
+    }
+
+    // Include House Checkbox
+    const chkHouse = document.getElementById('chkPrerollIncludeHouse');
+    if (chkHouse) {
+      chkHouse.addEventListener('change', (e) => {
+        includeHouse = e.target.checked;
+        if (selectedRep) {
+          clientPage = 1;
+          renderKpis();
+          renderPrerollGainersChart();
+          renderGlSpotlightChart();
+          renderPrerollClientTable();
+        }
+      });
+    }
+
+    // Reset Rep Filter Button
+    const btnReset = document.getElementById('btnPrerollResetRepFilter');
+    if (btnReset) {
+      btnReset.addEventListener('click', () => {
+        setPrerollRepFilter('');
+      });
+    }
+
+    // Inline Rep Dropdowns (client & void)
+    const clientRepSel = document.getElementById('prerollRepSelect');
+    if (clientRepSel) {
+      clientRepSel.addEventListener('change', (e) => {
+        setPrerollRepFilter(e.target.value);
+      });
+    }
+
+    const voidRepSel = document.getElementById('voidsRepSelect');
+    if (voidRepSel) {
+      voidRepSel.addEventListener('change', (e) => {
+        setPrerollRepFilter(e.target.value);
+      });
+    }
+
     // Primary View Tabs
     document.querySelectorAll('.tabs-bar .tab-btn').forEach(btn => {
       btn.addEventListener('click', () => {
@@ -750,13 +1037,6 @@
       renderPrerollClientTable();
     });
 
-    // Client Rep Filter
-    document.getElementById('prerollRepSelect').addEventListener('change', (e) => {
-      clientRepFilter = e.target.value;
-      clientPage = 1;
-      renderPrerollClientTable();
-    });
-
     // Client Page Size
     document.getElementById('prerollPageSizeSelect').addEventListener('change', (e) => {
       clientPageSize = e.target.value;
@@ -819,13 +1099,6 @@
       else renderVoidMatrixTable();
     });
 
-    document.getElementById('voidsRepSelect').addEventListener('change', (e) => {
-      voidRepFilter = e.target.value;
-      voidPage = 1;
-      if (voidMode === 'roster') renderVoidRosterTable();
-      else renderVoidMatrixTable();
-    });
-
     document.getElementById('voidsPageSizeSelect').addEventListener('change', (e) => {
       voidPageSize = e.target.value;
       voidPage = 1;
@@ -872,6 +1145,7 @@
 
   function exportPrerollClientsCsv() {
     const list = getFilteredPrerollClients();
+    const repPrefix = selectedRep ? `_${selectedRep.replace(/\s+/g, '_')}` : '';
     const headers = [
       'Client', 'Raw TP1 Client', 'Raw TP2 Client', 'Client Mismatch Resolved', 'G/L Status', 'Sales Rep',
       'TP1 Orders', 'TP1 Revenue', 'TP1 Units', 'TP1 AOV',
@@ -884,10 +1158,11 @@
       c.tp2Orders, c.tp2Ordered, c.tp2Units, c.tp2Aov,
       c.orderDiff, c.revDiff, c.unitDiff, c.aveDiff, c.voidCount
     ]);
-    window.VMI.exportCsv('vmi_preroll_client_performance.csv', headers, rows);
+    window.VMI.exportCsv(`vmi_preroll_client_performance${repPrefix}.csv`, headers, rows);
   }
 
   function exportVoidsCsv() {
+    const repPrefix = selectedRep ? `_${selectedRep.replace(/\s+/g, '_')}` : '';
     if (voidMode === 'roster') {
       const list = getFilteredVoidRoster();
       const headers = ['Product Category', 'Store / Client', 'Sales Rep', 'Chain Code', 'Is VMI', 'Is 1WT', 'TP2 Orders', 'TP2 Revenue'];
@@ -895,15 +1170,19 @@
         v.category, v.client, v.salesRep, v.chainCode || '', v.isVmi ? 'YES' : 'NO', v.is1Wt ? 'YES' : 'NO',
         v.tp2Orders, v.tp2Ordered
       ]);
-      window.VMI.exportCsv('vmi_preroll_category_voids_roster.csv', headers, rows);
+      window.VMI.exportCsv(`vmi_preroll_category_voids_roster${repPrefix}.csv`, headers, rows);
     } else {
       const categories = reportData.categoriesSummary.map(c => c.category);
       const headers = ['Store / Client', 'Sales Rep', ...categories, 'Total Void Categories', 'TP2 Preroll Revenue'];
-      const rows = reportData.clients.map(c => [
+      const rows = reportData.clients.filter(matchesRepFilter).map(c => [
         c.client, c.salesRep, ...categories.map(cat => c.voidCategories.includes(cat) ? 'VOID' : 'ACTIVE'),
         c.voidCount, c.tp2Ordered
       ]);
-      window.VMI.exportCsv('vmi_preroll_store_category_matrix.csv', headers, rows);
+      window.VMI.exportCsv(`vmi_preroll_store_category_matrix${repPrefix}.csv`, headers, rows);
     }
+  }
+
+  function round2(num) {
+    return Math.round(Number(num) * 100) / 100;
   }
 })();
