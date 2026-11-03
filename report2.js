@@ -109,16 +109,17 @@
     // 1. Build Pills
     if (pillsContainer) {
       let pillsHtml = `
-        <button class="rep-pill ${selectedRep === '' ? 'active' : ''}" data-prep="">
-          <span>All Sales Reps</span>
+        <button class="rep-pill ${selectedRep === '' ? 'active' : ''}" data-prep="" title="All Sales Reps">
+          <span>All</span>
           <span class="rep-pill-count">${reportData.clients.length}</span>
         </button>
       `;
       availableReps.forEach(rep => {
         const cnt = storeCounts[rep] || 0;
+        const inits = window.VMI.fmtRepInitials(rep);
         pillsHtml += `
-          <button class="rep-pill ${selectedRep === rep ? 'active' : ''}" data-prep="${window.VMI.escapeHtml(rep)}">
-            <span>${window.VMI.escapeHtml(rep)}</span>
+          <button class="rep-pill ${selectedRep === rep ? 'active' : ''}" data-prep="${window.VMI.escapeHtml(rep)}" title="${window.VMI.escapeHtml(rep)}">
+            <span>${window.VMI.escapeHtml(inits)}</span>
             <span class="rep-pill-count">${cnt}</span>
           </button>
         `;
@@ -131,7 +132,8 @@
       let dHtml = `<option value="">All Sales Reps (Full Preroll Territory)</option>`;
       dHtml += `<optgroup label="Consolidated Sales Reps (Full Book)">`;
       availableReps.forEach(rep => {
-        dHtml += `<option value="${window.VMI.escapeHtml(rep)}">${window.VMI.escapeHtml(rep)} (${storeCounts[rep] || 0} stores)</option>`;
+        const inits = window.VMI.fmtRepInitials(rep);
+        dHtml += `<option value="${window.VMI.escapeHtml(rep)}">${window.VMI.escapeHtml(inits)} — ${window.VMI.escapeHtml(rep)} (${storeCounts[rep] || 0} stores)</option>`;
       });
       dHtml += `</optgroup>`;
 
@@ -142,7 +144,8 @@
       });
       dHtml += `<optgroup label="Exact Territory / House Lines">`;
       Array.from(exactLines).sort().forEach(line => {
-        dHtml += `<option value="${window.VMI.escapeHtml(line)}">${window.VMI.escapeHtml(line)}</option>`;
+        const inits = window.VMI.fmtRepInitials(line);
+        dHtml += `<option value="${window.VMI.escapeHtml(line)}">${window.VMI.escapeHtml(line)} (${inits})</option>`;
       });
       dHtml += `</optgroup>`;
       topDropdown.innerHTML = dHtml;
@@ -152,9 +155,10 @@
       const sortedReps = Array.from(new Set(reportData.clients.map(c => c.salesRep).filter(r => r && r !== 'Unassigned' && r !== '-'))).sort();
       voidRepSel.innerHTML = `<option value="">All Sales Reps</option>`;
       sortedReps.forEach(r => {
+        const inits = window.VMI.fmtRepInitials(r);
         const opt = document.createElement('option');
         opt.value = r;
-        opt.textContent = r;
+        opt.textContent = `${inits} — ${r}`;
         voidRepSel.appendChild(opt);
       });
     }
@@ -179,7 +183,7 @@
     // Update active badge in header
     const badge = document.getElementById('prerollActiveRepBadge');
     if (badge) {
-      badge.textContent = selectedRep ? selectedRep : 'All Sales Reps';
+      badge.textContent = selectedRep ? `${window.VMI.fmtRepInitials(selectedRep)} — ${selectedRep}` : 'All Sales Reps';
       badge.className = `period-badge ${selectedRep ? 'tp1' : 'tp2'}`;
     }
 
@@ -471,7 +475,7 @@
       html += `
         <div class="chart-row" style="${selectedStyle} cursor: pointer;" data-repclick="${window.VMI.escapeHtml(r.baseRep)}">
           <div class="chart-row-meta">
-            <span class="chart-row-label"><strong>${window.VMI.escapeHtml(r.rep)}</strong></span>
+            <span class="chart-row-label" title="${window.VMI.escapeHtml(r.rep)}"><strong>${window.VMI.escapeHtml(window.VMI.fmtRepInitials(r.rep))}</strong></span>
             <span class="chart-row-vals">
               <span>TP2: ${window.VMI.fmtCurrency(r.tp2Ordered)}</span>
               <span class="${diffClass}">(${window.VMI.fmtSignedCurrency(r.revDiff)})</span>
@@ -623,10 +627,8 @@
       totTp2Rev += r.tp2Ordered;
       totTp2Unt += r.tp2Units;
 
-      const orderDiffClass = r.orderDiff >= 0 ? 'num-pos' : 'num-neg';
       const revDiffClass = r.revDiff >= 0 ? 'num-pos' : 'num-neg';
       const unitDiffClass = r.unitDiff >= 0 ? 'num-pos' : 'num-neg';
-      const aovDiffClass = r.aovDiff >= 0 ? 'num-pos' : 'num-neg';
 
       const isSelected = selectedRep && (r.rep.toLowerCase() === selectedRep.toLowerCase() || r.baseRep.toLowerCase() === selectedRep.toLowerCase());
       const selectedRowClass = isSelected ? 'style="background: rgba(6, 182, 212, 0.12);"' : '';
@@ -634,23 +636,17 @@
       bodyHtml += `
         <tr ${selectedRowClass}>
           <td>
-            <a href="javascript:void(0)" class="rep-table-link" data-repselect="${window.VMI.escapeHtml(r.baseRep)}" style="font-weight: 700; color: var(--text-primary); text-decoration: underline;">
-              ${window.VMI.escapeHtml(r.rep)}
+            <a href="javascript:void(0)" class="rep-table-link" data-repselect="${window.VMI.escapeHtml(r.baseRep)}" title="${window.VMI.escapeHtml(r.rep)}" style="font-weight: 700; color: var(--text-primary); text-decoration: underline;">
+              <span class="tag-badge tag-rep" style="margin-right:0.35rem;">${window.VMI.escapeHtml(window.VMI.fmtRepInitials(r.rep))}</span>
             </a>
           </td>
           <td><span class="tag-badge ${r.isHouse ? 'tag-1wt' : 'tag-chain'}">${window.VMI.escapeHtml(r.role)}</span></td>
-          <td class="text-right">${window.VMI.fmtInt(r.tp1Orders)}</td>
           <td class="text-right">${window.VMI.fmtCurrency(r.tp1Ordered)}</td>
-          <td class="text-right">${window.VMI.fmtInt(r.tp1Units)}</td>
-          <td class="text-right">${window.VMI.fmtCurrency(r.tp1Aov)}</td>
-          <td class="text-right">${window.VMI.fmtInt(r.tp2Orders)}</td>
           <td class="text-right">${window.VMI.fmtCurrency(r.tp2Ordered)}</td>
+          <td class="text-right ${revDiffClass}" style="font-weight: 800;">${window.VMI.fmtSignedCurrency(r.revDiff)}</td>
+          <td class="text-right">${window.VMI.fmtInt(r.tp1Units)}</td>
           <td class="text-right">${window.VMI.fmtInt(r.tp2Units)}</td>
-          <td class="text-right">${window.VMI.fmtCurrency(r.tp2Aov)}</td>
-          <td class="text-right ${orderDiffClass}">${window.VMI.fmtSignedInt(r.orderDiff)}</td>
-          <td class="text-right ${revDiffClass}">${window.VMI.fmtSignedCurrency(r.revDiff)}</td>
           <td class="text-right ${unitDiffClass}">${window.VMI.fmtSignedInt(r.unitDiff)}</td>
-          <td class="text-right ${aovDiffClass}">${window.VMI.fmtSignedCurrency(r.aovDiff)}</td>
         </tr>
       `;
     });
@@ -666,29 +662,19 @@
 
     totTp1Rev = round2(totTp1Rev);
     totTp2Rev = round2(totTp2Rev);
-    const totTp1Aov = totTp1Ord ? round2(totTp1Rev / totTp1Ord) : 0;
-    const totTp2Aov = totTp2Ord ? round2(totTp2Rev / totTp2Ord) : 0;
-    const totOrdDiff = totTp2Ord - totTp1Ord;
     const totRevDiff = round2(totTp2Rev - totTp1Rev);
     const totUntDiff = totTp2Unt - totTp1Unt;
-    const totAovDiff = round2(totTp2Aov - totTp1Aov);
 
     tfoot.innerHTML = `
       <tr>
-        <td><strong>Total Sales Reps:</strong></td>
+        <td><strong>Total:</strong></td>
         <td>${reps.length} lines</td>
-        <td class="text-right">${window.VMI.fmtInt(totTp1Ord)}</td>
         <td class="text-right">${window.VMI.fmtCurrency(totTp1Rev)}</td>
-        <td class="text-right">${window.VMI.fmtInt(totTp1Unt)}</td>
-        <td class="text-right">${window.VMI.fmtCurrency(totTp1Aov)}</td>
-        <td class="text-right">${window.VMI.fmtInt(totTp2Ord)}</td>
         <td class="text-right">${window.VMI.fmtCurrency(totTp2Rev)}</td>
+        <td class="text-right ${totRevDiff >= 0 ? 'num-pos' : 'num-neg'}" style="font-weight: 800;">${window.VMI.fmtSignedCurrency(totRevDiff)}</td>
+        <td class="text-right">${window.VMI.fmtInt(totTp1Unt)}</td>
         <td class="text-right">${window.VMI.fmtInt(totTp2Unt)}</td>
-        <td class="text-right">${window.VMI.fmtCurrency(totTp2Aov)}</td>
-        <td class="text-right ${totOrdDiff >= 0 ? 'num-pos' : 'num-neg'}">${window.VMI.fmtSignedInt(totOrdDiff)}</td>
-        <td class="text-right ${totRevDiff >= 0 ? 'num-pos' : 'num-neg'}">${window.VMI.fmtSignedCurrency(totRevDiff)}</td>
         <td class="text-right ${totUntDiff >= 0 ? 'num-pos' : 'num-neg'}">${window.VMI.fmtSignedInt(totUntDiff)}</td>
-        <td class="text-right ${totAovDiff >= 0 ? 'num-pos' : 'num-neg'}">${window.VMI.fmtSignedCurrency(totAovDiff)}</td>
       </tr>
     `;
 
@@ -708,16 +694,13 @@
       thead.innerHTML = `
         <tr>
           <th class="sortable" data-col="client">Client Name <span class="sort-icon">↕</span></th>
-          <th class="sortable" data-col="gl">G/L Status <span class="sort-icon">↕</span></th>
-          <th class="sortable" data-col="salesRep">Sales Rep <span class="sort-icon">↕</span></th>
-          <th class="sortable text-right" data-col="tp1Orders">TP1 Orders <span class="sort-icon">↕</span></th>
+          <th class="sortable" data-col="salesRep">Rep <span class="sort-icon">↕</span></th>
+          <th class="sortable" data-col="gl">Status <span class="sort-icon">↕</span></th>
           <th class="sortable text-right" data-col="tp1Ordered">TP1 Rev <span class="sort-icon">↕</span></th>
-          <th class="sortable text-right" data-col="tp2Orders">TP2 Orders <span class="sort-icon">↕</span></th>
           <th class="sortable text-right" data-col="tp2Ordered">TP2 Rev <span class="sort-icon">↕</span></th>
-          <th class="sortable text-right" data-col="orderDiff">Order Diff <span class="sort-icon">↕</span></th>
-          <th class="sortable text-right" data-col="revDiff">Rev Diff <span class="sort-icon">↕</span></th>
+          <th class="sortable text-right" data-col="revDiff">Rev Diff ($) <span class="sort-icon">↕</span></th>
           <th class="sortable text-right" data-col="unitDiff">Unit Diff <span class="sort-icon">↕</span></th>
-          <th class="sortable text-right" data-col="aveDiff">Ave Rev Diff <span class="sort-icon">↕</span></th>
+          <th class="sortable text-center" data-col="voidCount">Category Voids <span class="sort-icon">↕</span></th>
         </tr>
       `;
     } else {
@@ -725,7 +708,7 @@
       thead.innerHTML = `
         <tr>
           <th class="sortable" data-col="client">Client (${periodLabel}) <span class="sort-icon">↕</span></th>
-          <th class="sortable" data-col="salesRep">Sales Rep <span class="sort-icon">↕</span></th>
+          <th class="sortable" data-col="salesRep">Rep <span class="sort-icon">↕</span></th>
           <th class="sortable text-right" data-col="orders">Total Orders <span class="sort-icon">↕</span></th>
           <th class="sortable text-right" data-col="ordered">Total Ordered <span class="sort-icon">↕</span></th>
           <th class="sortable text-right" data-col="units">Total Units Ordered <span class="sort-icon">↕</span></th>
@@ -833,18 +816,16 @@
 
     let html = '';
     if (visibleRows.length === 0) {
-      const colSpan = activeTab === 'compare' ? 11 : 6;
+      const colSpan = activeTab === 'compare' ? 8 : 6;
       html = `<tr><td colspan="${colSpan}" style="text-align: center; color: var(--text-muted); padding: 2rem;">No matching client records found.</td></tr>`;
     } else {
       visibleRows.forEach(r => {
         const badges = window.VMI.renderClientBadges(r);
-        const repTag = `<span class="tag-badge tag-rep">${window.VMI.escapeHtml(r.salesRep || 'Unassigned')}</span>`;
+        const repTag = window.VMI.renderRepBadge(r.salesRep);
 
         if (activeTab === 'compare') {
-          const ordClass = r.orderDiff >= 0 ? 'num-pos' : 'num-neg';
           const revClass = r.revDiff >= 0 ? 'num-pos' : 'num-neg';
           const untClass = r.unitDiff >= 0 ? 'num-pos' : 'num-neg';
-          const aovClass = r.aveDiff >= 0 ? 'num-pos' : 'num-neg';
 
           let mismatchTag = '';
           if (r.clientMismatch) {
@@ -857,16 +838,13 @@
                 <div style="font-weight: 600;">${window.VMI.escapeHtml(r.client)}</div>
                 <div>${badges} ${mismatchTag}</div>
               </td>
-              <td>${window.VMI.renderGlBadge(r)}</td>
               <td>${repTag}</td>
-              <td class="text-right">${window.VMI.fmtInt(r.tp1Orders)}</td>
+              <td>${window.VMI.renderGlBadge(r)}</td>
               <td class="text-right">${window.VMI.fmtCurrency(r.tp1Ordered)}</td>
-              <td class="text-right">${window.VMI.fmtInt(r.tp2Orders)}</td>
               <td class="text-right">${window.VMI.fmtCurrency(r.tp2Ordered)}</td>
-              <td class="text-right ${ordClass}">${window.VMI.fmtSignedInt(r.orderDiff)}</td>
-              <td class="text-right ${revClass}">${window.VMI.fmtSignedCurrency(r.revDiff)}</td>
+              <td class="text-right ${revClass}" style="font-weight: 700;">${window.VMI.fmtSignedCurrency(r.revDiff)}</td>
               <td class="text-right ${untClass}">${window.VMI.fmtSignedInt(r.unitDiff)}</td>
-              <td class="text-right ${aovClass}">${window.VMI.fmtSignedCurrency(r.aveDiff)}</td>
+              <td class="text-center"><span class="tag-badge" style="background: rgba(245,158,11,0.15); color: var(--amber); font-weight: 700;">${r.voidCount || 0} / 10</span></td>
             </tr>
           `;
         } else {
@@ -889,7 +867,7 @@
     tbody.innerHTML = html;
 
     // Sticky totals footer
-    let fTp1Ord = 0, fTp1Rev = 0, fTp2Ord = 0, fTp2Rev = 0, fUntDiff = 0;
+    let fTp1Ord = 0, fTp1Rev = 0, fTp2Ord = 0, fTp2Rev = 0, fUntDiff = 0, fVoids = 0;
     filtered.forEach(r => {
       if (activeTab === 'compare') {
         fTp1Ord += r.tp1Orders;
@@ -897,6 +875,7 @@
         fTp2Ord += r.tp2Orders;
         fTp2Rev += r.tp2Ordered;
         fUntDiff += r.unitDiff;
+        fVoids += (r.voidCount || 0);
       } else {
         fTp1Ord += r.orders;
         fTp1Rev += r.ordered;
@@ -908,12 +887,7 @@
     fTp2Rev = round2(fTp2Rev);
 
     if (activeTab === 'compare') {
-      const fOrdDiff = fTp2Ord - fTp1Ord;
       const fRevDiff = round2(fTp2Rev - fTp1Rev);
-      const fTp1Aov = fTp1Ord ? round2(fTp1Rev / fTp1Ord) : 0;
-      const fTp2Aov = fTp2Ord ? round2(fTp2Rev / fTp2Ord) : 0;
-      const fAovDiff = round2(fTp2Aov - fTp1Aov);
-
       const label = (selectedRep || activeFilter !== 'all' || searchQuery) ? `Filtered Total (${totalCount} stores):` : `Total 12 v 12 compare (${totalCount} stores):`;
 
       tfoot.innerHTML = `
@@ -921,14 +895,11 @@
           <td><strong>${label}</strong></td>
           <td>-</td>
           <td>-</td>
-          <td class="text-right">${window.VMI.fmtInt(fTp1Ord)}</td>
           <td class="text-right">${window.VMI.fmtCurrency(fTp1Rev)}</td>
-          <td class="text-right">${window.VMI.fmtInt(fTp2Ord)}</td>
           <td class="text-right">${window.VMI.fmtCurrency(fTp2Rev)}</td>
-          <td class="text-right ${fOrdDiff >= 0 ? 'num-pos' : 'num-neg'}">${window.VMI.fmtSignedInt(fOrdDiff)}</td>
-          <td class="text-right ${fRevDiff >= 0 ? 'num-pos' : 'num-neg'}">${window.VMI.fmtSignedCurrency(fRevDiff)}</td>
+          <td class="text-right ${fRevDiff >= 0 ? 'num-pos' : 'num-neg'}" style="font-weight: 800;">${window.VMI.fmtSignedCurrency(fRevDiff)}</td>
           <td class="text-right ${fUntDiff >= 0 ? 'num-pos' : 'num-neg'}">${window.VMI.fmtSignedInt(fUntDiff)}</td>
-          <td class="text-right ${fAovDiff >= 0 ? 'num-pos' : 'num-neg'}">${window.VMI.fmtSignedCurrency(fAovDiff)}</td>
+          <td class="text-center" style="color: var(--amber); font-weight: 700;">${window.VMI.fmtInt(fVoids)} voids</td>
         </tr>
       `;
     } else {
@@ -1058,7 +1029,7 @@
       html += `
         <div class="chart-row" style="${selectedStyle} cursor: pointer;" data-voidrepclick="${window.VMI.escapeHtml(r.baseRep)}">
           <div class="chart-row-meta">
-            <span class="chart-row-label"><strong>${window.VMI.escapeHtml(r.rep)}</strong></span>
+            <span class="chart-row-label" title="${window.VMI.escapeHtml(r.rep)}"><strong>${window.VMI.escapeHtml(window.VMI.fmtRepInitials(r.rep))}</strong></span>
             <span class="chart-row-vals">
               <span class="num-neg">${r.voidCount} voids</span>
               <span style="color: var(--text-muted); font-size: 0.75rem;">(${r.uniqueStores} stores)</span>
@@ -1141,7 +1112,7 @@
               <div style="font-weight: 600;">${window.VMI.escapeHtml(v.client)}</div>
               <div>${badges}</div>
             </td>
-            <td><span class="tag-badge tag-rep">${window.VMI.escapeHtml(v.salesRep || '-')}</span></td>
+            <td>${window.VMI.renderRepBadge(v.salesRep)}</td>
             <td class="text-right">${window.VMI.fmtInt(v.tp2Orders)}</td>
             <td class="text-right">${window.VMI.fmtCurrency(v.tp2Ordered)}</td>
           </tr>
@@ -1253,7 +1224,7 @@
               <div style="font-weight: 600;">${window.VMI.escapeHtml(c.client)}</div>
               <div>${badges}</div>
             </td>
-            <td><span class="tag-badge tag-rep">${window.VMI.escapeHtml(c.salesRep || 'Unassigned')}</span></td>
+            <td>${window.VMI.renderRepBadge(c.salesRep)}</td>
             ${catCells}
             <td class="text-center"><strong>${c.voidCount}</strong> / 10</td>
             <td class="text-right">${window.VMI.fmtCurrency(c.tp2Ordered)}</td>

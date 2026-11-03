@@ -83,6 +83,28 @@ function escapeHtml(str) {
 }
 window.VMI.escapeHtml = escapeHtml;
 
+// Format Sales Rep Initials (e.g. "Scotland Schieber" -> "SS", "Scotland Schieber - House" -> "SS-H")
+window.VMI.fmtRepInitials = function(repName) {
+  if (!repName || repName === 'Unassigned' || repName === '-' || repName === '—') return '—';
+  const isHouse = /-\s*house/i.test(repName);
+  const clean = repName
+    .replace(/-\s*house/i, '')
+    .replace(/\s+WA$/i, '')
+    .trim();
+  if (!clean) return isHouse ? 'H' : '—';
+  if (/^[A-Z]{2,4}$/.test(clean)) return isHouse ? clean + '-H' : clean;
+  const words = clean.split(/[\s_-]+/).filter(Boolean);
+  const initials = words.map(w => w[0].toUpperCase()).join('');
+  return isHouse ? initials + '-H' : initials;
+};
+
+// Render Sales Rep Initials Badge with Full Name Tooltip
+window.VMI.renderRepBadge = function(repName) {
+  const label = repName || 'Unassigned';
+  const inits = window.VMI.fmtRepInitials(repName);
+  return `<span class="tag-badge tag-rep" title="${escapeHtml(label)}">${escapeHtml(inits)}</span>`;
+};
+
 // CSV Exporter
 window.VMI.exportCsv = function(filename, headers, rows) {
   let csvContent = '\uFEFF'; // UTF-8 BOM

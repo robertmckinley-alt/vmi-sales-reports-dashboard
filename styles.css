@@ -176,11 +176,11 @@ a {
   background: #4f46e5;
 }
 
-/* Main Container */
+/* Main Container (upgraded from max-width: 1600px widescreen to 100% full width with zero horizontal cutoff) */
 .container {
-  max-width: 1600px;
+  max-width: 100%;
   margin: 0 auto;
-  padding: 1.5rem;
+  padding: 1rem 1.25rem;
 }
 
 /* Page Hero */
@@ -614,6 +614,15 @@ a {
   font-size: 0.675rem;
 }
 
+.tag-rep {
+  background: rgba(148, 163, 184, 0.15);
+  color: var(--text-primary);
+  border: 1px solid var(--border-light);
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  font-size: 0.75rem;
+}
+
 /* Table Container & Tables */
 .table-container {
   background: var(--bg-card);
@@ -666,10 +675,16 @@ table.data-table th.sorted-desc .sort-icon {
 }
 
 table.data-table td {
-  padding: 0.6rem 0.65rem;
+  padding: 0.5rem 0.6rem;
   border-bottom: 1px solid var(--border-color);
   color: var(--text-primary);
   white-space: nowrap;
+}
+
+table.data-table td:first-child {
+  white-space: normal;
+  min-width: 180px;
+  max-width: 320px;
 }
 
 table.data-table tr:hover td {

@@ -366,6 +366,104 @@ it('UI Schema Parity: G/L selector bar, 5 KPI cards, Rep Comparison chart, Top G
   assert(pr.includes('data-tab="voids"'), 'Report 2 has Voids tab');
 });
 
+// Test 12: Sales Rep Initials, Streamlined Joint Revenue Comparison Tables & Zero Horizontal Cutoff
+it('Sales Rep initials, streamlined 7/8-column comparison tables without Orders/AOV, and cache busting are configured', () => {
+  // Load app-common.js in simulated window
+  const appCommonPath = path.join(rootDir, 'app-common.js');
+  const appCommonContent = fs.readFileSync(appCommonPath, 'utf8');
+  const windowObj = {};
+  const vm = require('vm');
+  vm.runInNewContext(appCommonContent, { window: windowObj, console });
+
+  assert(typeof windowObj.VMI.fmtRepInitials === 'function', 'window.VMI.fmtRepInitials is defined');
+  assert(typeof windowObj.VMI.renderRepBadge === 'function', 'window.VMI.renderRepBadge is defined');
+
+  const repTests = [
+    { input: 'Scotland Schieber', expected: 'SS' },
+    { input: 'Scotland Schieber - House', expected: 'SS-H' },
+    { input: 'Jeremy Schmidt', expected: 'JS' },
+    { input: 'Jeremy Schmidt - House', expected: 'JS-H' },
+    { input: 'Ashlea Underwood', expected: 'AU' },
+    { input: 'Ashlea Underwood - House', expected: 'AU-H' },
+    { input: 'Danny Thoren', expected: 'DT' },
+    { input: 'Danny Thoren - House', expected: 'DT-H' },
+    { input: 'Caitlin Stoner', expected: 'CS' },
+    { input: 'Nancy Drinkard WA', expected: 'ND' },
+    { input: 'Johnny Wilson', expected: 'JW' },
+    { input: 'Unassigned', expected: '—' },
+    { input: '', expected: '—' },
+    { input: null, expected: '—' },
+    { input: '-', expected: '—' }
+  ];
+
+  repTests.forEach(({ input, expected }) => {
+    const res = windowObj.VMI.fmtRepInitials(input);
+    assert.strictEqual(res, expected, `fmtRepInitials('${input}') must be '${expected}', got '${res}'`);
+  });
+
+  const badgeHtml = windowObj.VMI.renderRepBadge('Scotland Schieber');
+  assert(badgeHtml.includes('tag-badge tag-rep'), 'renderRepBadge returns tag-badge tag-rep span');
+  assert(badgeHtml.includes('SS'), 'renderRepBadge displays rep initials');
+  assert(badgeHtml.includes('title="Scotland Schieber"'), 'renderRepBadge has full name tooltip');
+
+  // Verify report1.js joint comparison headers do NOT contain TP1 Orders or Ave Rev Diff
+  const r1JsPath = path.join(rootDir, 'report1.js');
+  const r1Js = fs.readFileSync(r1JsPath, 'utf8');
+  const r1CompareHeadMatch = r1Js.match(/activeTab === 'compare'\) \{[\s\S]*?thead\.innerHTML = `([\s\S]*?)`;/);
+  assert(r1CompareHeadMatch, 'Found activeTab === compare head template in report1.js');
+  const r1Head = r1CompareHeadMatch[1];
+  assert(!r1Head.includes('TP1 Orders'), 'report1.js compare head must NOT include TP1 Orders');
+  assert(!r1Head.includes('TP2 Orders'), 'report1.js compare head must NOT include TP2 Orders');
+  assert(!r1Head.includes('Order Diff'), 'report1.js compare head must NOT include Order Diff');
+  assert(!r1Head.includes('Ave Rev Diff'), 'report1.js compare head must NOT include Ave Rev Diff');
+  assert(r1Head.includes('Rev Diff ($)'), 'report1.js compare head must include Rev Diff ($)');
+  assert(r1Head.includes('Unit Diff'), 'report1.js compare head must include Unit Diff');
+
+  // Verify report2.js joint comparison headers do NOT contain TP1 Orders or Ave Rev Diff
+  const r2JsPath = path.join(rootDir, 'report2.js');
+  const r2Js = fs.readFileSync(r2JsPath, 'utf8');
+  const r2CompareHeadMatch = r2Js.match(/activeTab === 'compare'\) \{[\s\S]*?thead\.innerHTML = `([\s\S]*?)`;/);
+  assert(r2CompareHeadMatch, 'Found activeTab === compare head template in report2.js');
+  const r2Head = r2CompareHeadMatch[1];
+  assert(!r2Head.includes('TP1 Orders'), 'report2.js compare head must NOT include TP1 Orders');
+  assert(!r2Head.includes('TP2 Orders'), 'report2.js compare head must NOT include TP2 Orders');
+  assert(!r2Head.includes('Order Diff'), 'report2.js compare head must NOT include Order Diff');
+  assert(!r2Head.includes('Ave Rev Diff'), 'report2.js compare head must NOT include Ave Rev Diff');
+  assert(r2Head.includes('Rev Diff ($)'), 'report2.js compare head must include Rev Diff ($)');
+  assert(r2Head.includes('Unit Diff'), 'report2.js compare head must include Unit Diff');
+  assert(r2Head.includes('Category Voids'), 'report2.js compare head must include Category Voids');
+
+  // Verify streamlined 8-column reps tables in index.html and preroll-performance.html
+  const idx = fs.readFileSync(indexHtmlPath, 'utf8');
+  const pr = fs.readFileSync(prerollHtmlPath, 'utf8');
+
+  assert(idx.includes('<table class="data-table" id="repsTable">'), 'index.html has repsTable');
+  assert(!idx.includes('<th class="sortable text-right" data-col="tp1Orders">TP1 Orders'), 'index.html repsTable does not have tp1Orders');
+  assert(!idx.includes('<th class="sortable text-right" data-col="aovDiff">AOV Diff'), 'index.html repsTable does not have aovDiff');
+
+  assert(pr.includes('<table class="data-table" id="prerollRepsTable">'), 'preroll-performance.html has prerollRepsTable');
+  assert(!pr.includes('<th class="sortable text-right" data-col="tp1Orders">TP1 Orders'), 'preroll-performance.html prerollRepsTable does not have tp1Orders');
+  assert(!pr.includes('<th class="sortable text-right" data-col="aovDiff">AOV Diff'), 'preroll-performance.html prerollRepsTable does not have aovDiff');
+
+  // Verify cache-busting v=4 query string
+  assert(idx.includes('styles.css?v=4'), 'index.html has styles.css?v=4');
+  assert(idx.includes('reports-data.js?v=4'), 'index.html has reports-data.js?v=4');
+  assert(idx.includes('app-common.js?v=4'), 'index.html has app-common.js?v=4');
+  assert(idx.includes('report1.js?v=4'), 'index.html has report1.js?v=4');
+
+  assert(pr.includes('styles.css?v=4'), 'preroll-performance.html has styles.css?v=4');
+  assert(pr.includes('reports-data.js?v=4'), 'preroll-performance.html has reports-data.js?v=4');
+  assert(pr.includes('app-common.js?v=4'), 'preroll-performance.html has app-common.js?v=4');
+  assert(pr.includes('report2.js?v=4'), 'preroll-performance.html has report2.js?v=4');
+
+  // Verify CSS viewport & wrapping rules
+  const cssPath = path.join(rootDir, 'styles.css');
+  const css = fs.readFileSync(cssPath, 'utf8');
+  assert(css.includes('max-width: 100%'), 'styles.css defines max-width: 100% for container');
+  assert(css.includes('table.data-table td:first-child'), 'styles.css defines table.data-table td:first-child');
+  assert(css.includes('white-space: normal'), 'styles.css allows wrapping for client column');
+});
+
 console.log(`\n========================================`);
 console.log(`Test Results: ${passCount} passed, ${failCount} failed.`);
 console.log(`========================================\n`);
