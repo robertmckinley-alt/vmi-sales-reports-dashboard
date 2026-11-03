@@ -53,12 +53,22 @@ window.VMI.renderClientBadges = function(row) {
   if (row.is1Wt) {
     html += `<span class="tag-badge tag-1wt">1WT</span>`;
   }
-  if (row.gl === 'G') {
-    html += `<span class="tag-badge tag-gl-g">GAINED (G)</span>`;
-  } else if (row.gl === 'L') {
-    html += `<span class="tag-badge tag-gl-l">LOST (L)</span>`;
-  }
   return html;
+};
+
+// Render dedicated G/L Status Badge
+window.VMI.renderGlBadge = function(row) {
+  if (row.accountStatus === 'NEW') {
+    return `<span class="tag-badge tag-gl-new">NEW [G]</span>`;
+  } else if (row.accountStatus === 'CHURNED') {
+    return `<span class="tag-badge tag-gl-churned">LOST [L]</span>`;
+  } else if (row.gl === 'G' || row.perfStatus === 'GAIN' || (row.revDiff !== undefined && row.revDiff > 0)) {
+    return `<span class="tag-badge tag-gl-g">GAIN (+)</span>`;
+  } else if (row.gl === 'L' || row.perfStatus === 'LOSS' || (row.revDiff !== undefined && row.revDiff < 0)) {
+    return `<span class="tag-badge tag-gl-l">LOSS (-)</span>`;
+  } else {
+    return `<span class="tag-badge" style="background: rgba(148, 163, 184, 0.15); color: var(--text-muted);">FLAT</span>`;
+  }
 };
 
 // Escape HTML for safety
@@ -72,6 +82,28 @@ function escapeHtml(str) {
     .replace(/'/g, '&#039;');
 }
 window.VMI.escapeHtml = escapeHtml;
+
+// Format Sales Rep Initials (e.g. "Scotland Schieber" -> "SS", "Scotland Schieber - House" -> "SS-H")
+window.VMI.fmtRepInitials = function(repName) {
+  if (!repName || repName === 'Unassigned' || repName === '-' || repName === '—') return '—';
+  const isHouse = /-\s*house/i.test(repName);
+  const clean = repName
+    .replace(/-\s*house/i, '')
+    .replace(/\s+WA$/i, '')
+    .trim();
+  if (!clean) return isHouse ? 'H' : '—';
+  if (/^[A-Z]{2,4}$/.test(clean)) return isHouse ? clean + '-H' : clean;
+  const words = clean.split(/[\s_-]+/).filter(Boolean);
+  const initials = words.map(w => w[0].toUpperCase()).join('');
+  return isHouse ? initials + '-H' : initials;
+};
+
+// Render Sales Rep Initials Badge with Full Name Tooltip
+window.VMI.renderRepBadge = function(repName) {
+  const label = repName || 'Unassigned';
+  const inits = window.VMI.fmtRepInitials(repName);
+  return `<span class="tag-badge tag-rep" title="${escapeHtml(label)}">${escapeHtml(inits)}</span>`;
+};
 
 // CSV Exporter
 window.VMI.exportCsv = function(filename, headers, rows) {

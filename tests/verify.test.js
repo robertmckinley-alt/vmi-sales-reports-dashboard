@@ -464,6 +464,28 @@ it('Sales Rep initials, streamlined 7/8-column comparison tables without Orders/
   assert(css.includes('white-space: normal'), 'styles.css allows wrapping for client column');
 });
 
+// Test 13: Verify public/ directory (served by Vercel) is 100% identical to root assets
+it('public/ directory assets are 100% synced and byte-for-byte identical to root assets', () => {
+  const syncedFiles = [
+    'index.html',
+    'preroll-performance.html',
+    'report1.js',
+    'report2.js',
+    'app-common.js',
+    'styles.css',
+    path.join('data', 'reports-data.js'),
+    path.join('data', 'reports-data.json')
+  ];
+  syncedFiles.forEach(relPath => {
+    const rootFile = path.join(rootDir, relPath);
+    const pubFile = path.join(rootDir, 'public', relPath);
+    assert(fs.existsSync(pubFile), `public/${relPath} exists`);
+    const rootContent = fs.readFileSync(rootFile, 'utf8');
+    const pubContent = fs.readFileSync(pubFile, 'utf8');
+    assert.strictEqual(pubContent, rootContent, `public/${relPath} must match root ${relPath} exactly`);
+  });
+});
+
 console.log(`\n========================================`);
 console.log(`Test Results: ${passCount} passed, ${failCount} failed.`);
 console.log(`========================================\n`);
