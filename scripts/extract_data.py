@@ -265,11 +265,14 @@ def parse_report1(wb13_path, rep_map):
         unit_diff = t2['units'] - t1['units']
         ave_rev_diff = round(t2['aov'] - t1['aov'], 2)
 
-        gl = None
+        account_status = 'RETAINED'
         if t1['orders'] == 0 and t2['orders'] > 0:
-            gl = 'G'
+            account_status = 'NEW'
         elif t1['orders'] > 0 and t2['orders'] == 0:
-            gl = 'L'
+            account_status = 'CHURNED'
+
+        perf_status = 'GAIN' if rev_diff > 0 else ('LOSS' if rev_diff < 0 else 'FLAT')
+        gl = 'G' if rev_diff > 0 else ('L' if rev_diff < 0 else None)
 
         tags = extract_tags(name)
         rep_raw = rep_map.get(name, 'Unassigned')
@@ -284,6 +287,8 @@ def parse_report1(wb13_path, rep_map):
             'unitDiff': unit_diff,
             'aveRevDiff': ave_rev_diff,
             'gl': gl,
+            'accountStatus': account_status,
+            'perfStatus': perf_status,
             'isVmi': tags['isVmi'],
             'is1Wt': tags['is1Wt'],
             'chainCode': tags['chainCode'],
@@ -317,6 +322,10 @@ def parse_report1(wb13_path, rep_map):
     assert calc_ord_diff == 214, f"Expected orderDiff sum 214, got {calc_ord_diff}"
     assert calc_rev_diff == 400533.22, f"Expected revDiff sum 400533.22, got {calc_rev_diff}"
     assert calc_unt_diff == 40499, f"Expected unitDiff sum 40499, got {calc_unt_diff}"
+    assert len([c for c in compare_clients if c['gl'] == 'G']) == 222, f"Expected 222 gainers in R1, got {len([c for c in compare_clients if c['gl'] == 'G'])}"
+    assert len([c for c in compare_clients if c['gl'] == 'L']) == 190, f"Expected 190 losers in R1, got {len([c for c in compare_clients if c['gl'] == 'L'])}"
+    assert len([c for c in compare_clients if c['accountStatus'] == 'NEW']) == 13, f"Expected 13 new in R1, got {len([c for c in compare_clients if c['accountStatus'] == 'NEW'])}"
+    assert len([c for c in compare_clients if c['accountStatus'] == 'CHURNED']) == 12, f"Expected 12 churned in R1, got {len([c for c in compare_clients if c['accountStatus'] == 'CHURNED'])}"
 
     # 4. Sales Rep Summaries: EXCLUDING VMI-only reps (Curtis Green, Josh Novak, Koen McKinley)
     # A. Store-level full book aggregation from all 412 clients by salesRep
@@ -340,7 +349,13 @@ def parse_report1(wb13_path, rep_map):
                 'tp1Units': 0,
                 'tp2Orders': 0,
                 'tp2Ordered': 0.0,
-                'tp2Units': 0
+                'tp2Units': 0,
+                'gainedStores': 0,
+                'lostStores': 0,
+                'newStores': 0,
+                'churnedStores': 0,
+                'revUpStores': 0,
+                'revDownStores': 0
             }
         sb = store_book[rep]
         sb['storeCount'] += 1
@@ -350,6 +365,16 @@ def parse_report1(wb13_path, rep_map):
         sb['tp2Orders'] += c['tp2Orders']
         sb['tp2Ordered'] += c['tp2Ordered']
         sb['tp2Units'] += c['tp2Units']
+        if c['gl'] == 'G':
+            sb['gainedStores'] += 1
+            sb['revUpStores'] += 1
+        elif c['gl'] == 'L':
+            sb['lostStores'] += 1
+            sb['revDownStores'] += 1
+        if c['accountStatus'] == 'NEW':
+            sb['newStores'] += 1
+        elif c['accountStatus'] == 'CHURNED':
+            sb['churnedStores'] += 1
 
     store_book_reps = []
     for rep, sb in sorted(store_book.items(), key=lambda x: -x[1]['tp2Ordered']):
@@ -570,11 +595,14 @@ def parse_report2(wb12_path, rep_map):
         unt_diff = t2['units'] - t1['units']
         aov_diff = round(t2['aov'] - t1['aov'], 2)
 
-        gl = None
+        account_status = 'RETAINED'
         if t1['orders'] == 0 and t2['orders'] > 0:
-            gl = 'G'
+            account_status = 'NEW'
         elif t1['orders'] > 0 and t2['orders'] == 0:
-            gl = 'L'
+            account_status = 'CHURNED'
+
+        perf_status = 'GAIN' if rev_diff > 0 else ('LOSS' if rev_diff < 0 else 'FLAT')
+        gl = 'G' if rev_diff > 0 else ('L' if rev_diff < 0 else None)
 
         tags = extract_tags(name)
         assigned_rep = rep_map.get(name, 'Unassigned')
@@ -598,6 +626,8 @@ def parse_report2(wb12_path, rep_map):
             'tp2Units': t2['units'],
             'tp2Aov': t2['aov'],
             'gl': gl,
+            'accountStatus': account_status,
+            'perfStatus': perf_status,
             'orderDiff': ord_diff,
             'revDiff': rev_diff,
             'unitDiff': unt_diff,
@@ -622,8 +652,124 @@ def parse_report2(wb12_path, rep_map):
     assert sum(c['orderDiff'] for c in clients) == 168, f"Order diff sum mismatch: {sum(c['orderDiff'] for c in clients)}"
     assert round(sum(c['revDiff'] for c in clients), 2) == -129405.35, f"Rev diff sum mismatch: {round(sum(c['revDiff'] for c in clients), 2)}"
     assert sum(c['unitDiff'] for c in clients) == -36330, f"Unit diff sum mismatch: {sum(c['unitDiff'] for c in clients)}"
-    assert len([c for c in clients if c['gl'] == 'G']) == 14, f"Expected 14 gained, got {len([c for c in clients if c['gl'] == 'G'])}"
-    assert len([c for c in clients if c['gl'] == 'L']) == 18, f"Expected 18 lost, got {len([c for c in clients if c['gl'] == 'L'])}"
+    assert len([c for c in clients if c['gl'] == 'G']) == 198, f"Expected 198 gained, got {len([c for c in clients if c['gl'] == 'G'])}"
+    assert len([c for c in clients if c['gl'] == 'L']) == 206, f"Expected 206 lost, got {len([c for c in clients if c['gl'] == 'L'])}"
+    assert len([c for c in clients if c['accountStatus'] == 'NEW']) == 14, f"Expected 14 new, got {len([c for c in clients if c['accountStatus'] == 'NEW'])}"
+    assert len([c for c in clients if c['accountStatus'] == 'CHURNED']) == 18, f"Expected 18 churned, got {len([c for c in clients if c['accountStatus'] == 'CHURNED'])}"
+
+    # Generate TP1 (390 stores) and TP2 (386 stores) active client lists
+    tp1_clients = []
+    for c in clients:
+        if c['tp1Orders'] > 0:
+            tp1_clients.append({
+                'client': c['client'],
+                'salesRep': c['salesRep'],
+                'baseSalesRep': c['baseSalesRep'],
+                'orders': c['tp1Orders'],
+                'ordered': c['tp1Ordered'],
+                'units': c['tp1Units'],
+                'aov': c['tp1Aov'],
+                'isVmi': c['isVmi'],
+                'is1Wt': c['is1Wt'],
+                'chainCode': c['chainCode'],
+                'voidCount': c.get('voidCount', 0),
+                'voidCategories': c.get('voidCategories', [])
+            })
+
+    tp2_clients = []
+    for c in clients:
+        if c['tp2Orders'] > 0:
+            tp2_clients.append({
+                'client': c['client'],
+                'salesRep': c['salesRep'],
+                'baseSalesRep': c['baseSalesRep'],
+                'orders': c['tp2Orders'],
+                'ordered': c['tp2Ordered'],
+                'units': c['tp2Units'],
+                'aov': c['tp2Aov'],
+                'isVmi': c['isVmi'],
+                'is1Wt': c['is1Wt'],
+                'chainCode': c['chainCode'],
+                'voidCount': c.get('voidCount', 0),
+                'voidCategories': c.get('voidCategories', [])
+            })
+
+    assert len(tp1_clients) == 390, f"Expected 390 active TP1 clients, got {len(tp1_clients)}"
+    assert sum(c['orders'] for c in tp1_clients) == 2806, f"TP1 orders sum mismatch: {sum(c['orders'] for c in tp1_clients)}"
+    assert round(sum(c['ordered'] for c in tp1_clients), 2) == 2323107.17, f"TP1 ordered sum mismatch: {round(sum(c['ordered'] for c in tp1_clients), 2)}"
+    assert sum(c['units'] for c in tp1_clients) == 1016928, f"TP1 units sum mismatch: {sum(c['units'] for c in tp1_clients)}"
+
+    assert len(tp2_clients) == 386, f"Expected 386 active TP2 clients, got {len(tp2_clients)}"
+    assert sum(c['orders'] for c in tp2_clients) == 2974, f"TP2 orders sum mismatch: {sum(c['orders'] for c in tp2_clients)}"
+    assert round(sum(c['ordered'] for c in tp2_clients), 2) == 2193701.82, f"TP2 ordered sum mismatch: {round(sum(c['ordered'] for c in tp2_clients), 2)}"
+    assert sum(c['units'] for c in tp2_clients) == 980598, f"TP2 units sum mismatch: {sum(c['units'] for c in tp2_clients)}"
+
+    # Generate Sales Reps Performance Rollup across all 404 Preroll stores
+    store_book2 = {}
+    for c in clients:
+        rep = c['salesRep']
+        if rep in VMI_ONLY_REPS:
+            continue
+        if rep not in store_book2:
+            is_house = ' - House' in rep
+            base_rep = rep.replace(' - House', '').strip()
+            role = 'House' if is_house else ('Unassigned' if rep == 'Unassigned' else 'Sales')
+            store_book2[rep] = {
+                'rep': rep,
+                'baseRep': base_rep,
+                'isHouse': is_house,
+                'role': role,
+                'storeCount': 0,
+                'tp1Orders': 0,
+                'tp1Ordered': 0.0,
+                'tp1Units': 0,
+                'tp2Orders': 0,
+                'tp2Ordered': 0.0,
+                'tp2Units': 0,
+                'gainedStores': 0,
+                'lostStores': 0,
+                'newStores': 0,
+                'churnedStores': 0,
+                'revUpStores': 0,
+                'revDownStores': 0
+            }
+        sb = store_book2[rep]
+        sb['storeCount'] += 1
+        sb['tp1Orders'] += c['tp1Orders']
+        sb['tp1Ordered'] += c['tp1Ordered']
+        sb['tp1Units'] += c['tp1Units']
+        sb['tp2Orders'] += c['tp2Orders']
+        sb['tp2Ordered'] += c['tp2Ordered']
+        sb['tp2Units'] += c['tp2Units']
+        if c['gl'] == 'G':
+            sb['gainedStores'] += 1
+            sb['revUpStores'] += 1
+        elif c['gl'] == 'L':
+            sb['lostStores'] += 1
+            sb['revDownStores'] += 1
+        if c['accountStatus'] == 'NEW':
+            sb['newStores'] += 1
+        elif c['accountStatus'] == 'CHURNED':
+            sb['churnedStores'] += 1
+
+    store_book2_reps = []
+    for rep, sb in sorted(store_book2.items(), key=lambda x: -x[1]['tp2Ordered']):
+        sb['tp1Ordered'] = round(sb['tp1Ordered'], 2)
+        sb['tp2Ordered'] = round(sb['tp2Ordered'], 2)
+        sb['tp1Aov'] = round(sb['tp1Ordered'] / sb['tp1Orders'], 2) if sb['tp1Orders'] else 0.0
+        sb['tp2Aov'] = round(sb['tp2Ordered'] / sb['tp2Orders'], 2) if sb['tp2Orders'] else 0.0
+        sb['orderDiff'] = sb['tp2Orders'] - sb['tp1Orders']
+        sb['revDiff'] = round(sb['tp2Ordered'] - sb['tp1Ordered'], 2)
+        sb['unitDiff'] = sb['tp2Units'] - sb['tp1Units']
+        sb['aovDiff'] = round(sb['tp2Aov'] - sb['tp1Aov'], 2)
+        store_book2_reps.append(sb)
+
+    assert sum(sb['tp1Orders'] for sb in store_book2_reps) == 2806
+    assert round(sum(sb['tp1Ordered'] for sb in store_book2_reps), 2) == 2323107.17
+    assert sum(sb['tp1Units'] for sb in store_book2_reps) == 1016928
+    assert sum(sb['tp2Orders'] for sb in store_book2_reps) == 2974
+    assert round(sum(sb['tp2Ordered'] for sb in store_book2_reps), 2) == 2193701.82
+    assert sum(sb['tp2Units'] for sb in store_book2_reps) == 980598
 
     # Enrich voids with tp2 sales data if available
     for v in voids:
@@ -639,7 +785,12 @@ def parse_report2(wb12_path, rep_map):
         'tp1Total': tp1_total,
         'tp2Total': tp2_total,
         'compareTotal': compare_total,
+        'tp1Clients': tp1_clients,
+        'tp2Clients': tp2_clients,
         'clients': clients,
+        'compareClients': clients,
+        'salesReps': store_book2_reps,
+        'storeLevelSalesReps': store_book2_reps,
         'voids': voids,
         'categoriesSummary': categories_summary,
         'repsVoidSummary': reps_void_summary,

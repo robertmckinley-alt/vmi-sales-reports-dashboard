@@ -33,6 +33,7 @@
       const data = await window.VMI.loadData();
       reportData = data.report1;
       populateRepSelector();
+      renderGlSelector();
       renderKpis();
       renderRepChart();
       renderGainersDeclinersChart();
@@ -144,11 +145,159 @@
     }
 
     currentPage = 1;
+    renderGlSelector();
     renderKpis();
     renderRepChart();
     renderGainersDeclinersChart();
     renderRepsTable();
     renderClientTable();
+  }
+
+  function setGlFilter(filterKey) {
+    activeFilter = filterKey;
+    if (activeFilter === 'gainers' || activeFilter === 'new') {
+      sortCol = 'revDiff';
+      sortAsc = false;
+    } else if (activeFilter === 'decliners' || activeFilter === 'lost') {
+      sortCol = 'revDiff';
+      sortAsc = true;
+    }
+    // Update active filter pills
+    document.querySelectorAll('.filter-pill').forEach(p => {
+      if (p.getAttribute('data-filter') === activeFilter) p.classList.add('active');
+      else p.classList.remove('active');
+    });
+    currentPage = 1;
+    renderGlSelector();
+    renderClientTable();
+  }
+
+  function renderGlSelector() {
+    const grid = document.getElementById('rep1GlGrid');
+    const badge = document.getElementById('rep1ActiveGlBadge');
+    if (!grid) return;
+
+    const scoped = reportData.compareClients.filter(matchesRepFilter);
+    const totalCount = scoped.length;
+
+    let gainCount = 0, gainRev = 0, gainOrd = 0, gainUnt = 0;
+    let lossCount = 0, lossRev = 0, lossOrd = 0, lossUnt = 0;
+    let newCount = 0, newRev = 0;
+    let lostCount = 0, lostRev = 0;
+    let retCount = 0, retDiff = 0;
+
+    let totDiff = 0;
+
+    scoped.forEach(c => {
+      totDiff += c.revDiff;
+      if (c.revDiff > 0) {
+        gainCount++;
+        gainRev += c.revDiff;
+        gainOrd += c.orderDiff;
+        gainUnt += c.unitDiff;
+      } else if (c.revDiff < 0) {
+        lossCount++;
+        lossRev += c.revDiff;
+        lossOrd += c.orderDiff;
+        lossUnt += c.unitDiff;
+      }
+
+      if (c.accountStatus === 'NEW') {
+        newCount++;
+        newRev += c.tp2Ordered;
+      } else if (c.accountStatus === 'CHURNED') {
+        lostCount++;
+        lostRev += c.tp1Ordered;
+      } else {
+        retCount++;
+        retDiff += c.revDiff;
+      }
+    });
+
+    gainRev = round2(gainRev);
+    lossRev = round2(lossRev);
+    newRev = round2(newRev);
+    lostRev = round2(lostRev);
+    totDiff = round2(totDiff);
+    retDiff = round2(retDiff);
+
+    if (badge) {
+      const labelMap = {
+        'all': `All Stores (${totalCount})`,
+        'gainers': `Gains — Revenue Up (${gainCount})`,
+        'decliners': `Losses — Revenue Down (${lossCount})`,
+        'new': `Newly Gained [G] (${newCount})`,
+        'lost': `Lost / Dropped [L] (${lostCount})`,
+        'retained': `Retained Stores (${retCount})`
+      };
+      badge.textContent = labelMap[activeFilter] || `All Stores (${totalCount})`;
+    }
+
+    const cards = [
+      {
+        id: 'all',
+        label: 'All Stores',
+        count: totalCount,
+        val: window.VMI.fmtSignedCurrency(totDiff),
+        sub: `TP2 vs TP1 Net Revenue Delta`,
+        activeClass: activeFilter === 'all' ? 'active' : ''
+      },
+      {
+        id: 'gainers',
+        label: 'All Store Gains (+)',
+        count: gainCount,
+        val: window.VMI.fmtSignedCurrency(gainRev),
+        sub: `${window.VMI.fmtSignedInt(gainOrd)} Orders • ${window.VMI.fmtSignedInt(gainUnt)} Units`,
+        activeClass: activeFilter === 'gainers' ? 'active gain' : ''
+      },
+      {
+        id: 'decliners',
+        label: 'All Store Losses (-)',
+        count: lossCount,
+        val: window.VMI.fmtSignedCurrency(lossRev),
+        sub: `${window.VMI.fmtSignedInt(lossOrd)} Orders • ${window.VMI.fmtSignedInt(lossUnt)} Units`,
+        activeClass: activeFilter === 'decliners' ? 'active loss' : ''
+      },
+      {
+        id: 'new',
+        label: 'New Accounts [G]',
+        count: newCount,
+        val: window.VMI.fmtCurrency(newRev),
+        sub: `$0 in TP1 → Active in TP2`,
+        activeClass: activeFilter === 'new' ? 'active gain' : ''
+      },
+      {
+        id: 'lost',
+        label: 'Lost Accounts [L]',
+        count: lostCount,
+        val: window.VMI.fmtCurrency(lostRev),
+        sub: `Active in TP1 → $0 in TP2`,
+        activeClass: activeFilter === 'lost' ? 'active loss' : ''
+      },
+      {
+        id: 'retained',
+        label: 'Retained Active Stores',
+        count: retCount,
+        val: window.VMI.fmtSignedCurrency(retDiff),
+        sub: `Active in Both Periods`,
+        activeClass: activeFilter === 'retained' ? 'active' : ''
+      }
+    ];
+
+    let html = '';
+    cards.forEach(card => {
+      html += `
+        <div class="gl-card ${card.activeClass}" data-glfilter="${card.id}">
+          <div class="gl-card-top">
+            <span>${card.label}</span>
+            <span class="gl-card-count">${card.count}</span>
+          </div>
+          <div class="gl-card-val ${card.id === 'gainers' || card.id === 'new' ? 'num-pos' : (card.id === 'decliners' || card.id === 'lost' ? 'num-neg' : '')}">${card.val}</div>
+          <div class="gl-card-sub">${card.sub}</div>
+        </div>
+      `;
+    });
+    grid.innerHTML = html;
   }
 
   function renderKpis() {
@@ -224,6 +373,28 @@
     document.getElementById('badgeCompareCount').textContent = window.VMI.fmtInt(cmpCount);
     document.getElementById('badgeTp1Count').textContent = window.VMI.fmtInt(tp1Count);
     document.getElementById('badgeTp2Count').textContent = window.VMI.fmtInt(tp2Count);
+
+    // Gains vs Losses Card
+    let gCount = 0, lCount = 0, nCount = 0, cCount = 0;
+    const scopedAll = reportData.compareClients.filter(matchesRepFilter);
+    scopedAll.forEach(c => {
+      if (c.revDiff > 0) gCount++;
+      else if (c.revDiff < 0) lCount++;
+      if (c.accountStatus === 'NEW') nCount++;
+      else if (c.accountStatus === 'CHURNED') cCount++;
+    });
+
+    const elGain = document.getElementById('kpiGainersCount');
+    const elLoss = document.getElementById('kpiLosersCount');
+    const elNewLost = document.getElementById('kpiNewDroppedText');
+    const elStoreBadge = document.getElementById('kpiStoreCountBadge');
+    const elRevUpDelta = document.getElementById('kpiRevUpDelta');
+
+    if (elGain) elGain.textContent = `${gCount} Gainers (+)`;
+    if (elLoss) elLoss.textContent = `${lCount} Losers (-)`;
+    if (elNewLost) elNewLost.textContent = `${nCount} New [G] • ${cCount} Dropped [L]`;
+    if (elStoreBadge) elStoreBadge.textContent = `${scopedAll.length} Stores`;
+    if (elRevUpDelta) elRevUpDelta.textContent = `+${gCount} Stores`;
   }
 
   function renderRepChart() {
@@ -271,20 +442,28 @@
   function renderGainersDeclinersChart() {
     const container = document.getElementById('gainersDeclinersChartContainer');
     const filteredList = reportData.compareClients.filter(matchesRepFilter);
-    const sorted = [...filteredList].sort((a, b) => b.revDiff - a.revDiff);
-    const gainers = sorted.slice(0, 10);
-    const decliners = sorted.slice(-10).reverse();
 
-    const currentList = gainersViewMode === 'gainers' ? gainers : decliners;
-    const maxAbsVal = Math.max(...currentList.map(c => Math.abs(c.revDiff)), 1);
+    let currentList = [];
+    if (gainersViewMode === 'gainers') {
+      currentList = [...filteredList].filter(c => c.revDiff > 0).sort((a, b) => b.revDiff - a.revDiff).slice(0, 10);
+    } else if (gainersViewMode === 'decliners') {
+      currentList = [...filteredList].filter(c => c.revDiff < 0).sort((a, b) => a.revDiff - b.revDiff).slice(0, 10);
+    } else if (gainersViewMode === 'new') {
+      currentList = [...filteredList].filter(c => c.accountStatus === 'NEW').sort((a, b) => b.tp2Ordered - a.tp2Ordered).slice(0, 10);
+    } else if (gainersViewMode === 'lost') {
+      currentList = [...filteredList].filter(c => c.accountStatus === 'CHURNED').sort((a, b) => b.tp1Ordered - a.tp1Ordered).slice(0, 10);
+    }
+
+    const maxAbsVal = Math.max(...currentList.map(c => Math.abs(c.revDiff || (c.accountStatus === 'NEW' ? c.tp2Ordered : c.tp1Ordered))), 1);
 
     let html = '';
     if (currentList.length === 0) {
       html = `<div style="text-align: center; color: var(--text-muted); padding: 2rem;">No accounts match current filter.</div>`;
     } else {
       currentList.forEach(c => {
-        const pct = ((Math.abs(c.revDiff) / maxAbsVal) * 100).toFixed(1);
-        const isPos = c.revDiff >= 0;
+        const val = (gainersViewMode === 'new' && c.revDiff === 0) ? c.tp2Ordered : ((gainersViewMode === 'lost' && c.revDiff === 0) ? -c.tp1Ordered : c.revDiff);
+        const pct = ((Math.abs(val) / maxAbsVal) * 100).toFixed(1);
+        const isPos = val >= 0;
         const fillClass = isPos ? 'pos' : 'neg';
         const textClass = isPos ? 'num-pos' : 'num-neg';
         html += `
@@ -292,7 +471,7 @@
             <div class="chart-row-meta">
               <span class="chart-row-label" title="${window.VMI.escapeHtml(c.client)}">${window.VMI.escapeHtml(c.client)}</span>
               <span class="chart-row-vals">
-                <span class="${textClass}">${window.VMI.fmtSignedCurrency(c.revDiff)}</span>
+                <span class="${textClass}">${window.VMI.fmtSignedCurrency(val)}</span>
               </span>
             </div>
             <div class="bar-track">
@@ -469,6 +648,7 @@
       thead.innerHTML = `
         <tr>
           <th class="sortable" data-col="client">Client Name <span class="sort-icon">↕</span></th>
+          <th class="sortable" data-col="gl">G/L Status <span class="sort-icon">↕</span></th>
           <th class="sortable" data-col="salesRep">Sales Rep <span class="sort-icon">↕</span></th>
           <th class="sortable text-right" data-col="tp1Orders">TP1 Orders <span class="sort-icon">↕</span></th>
           <th class="sortable text-right" data-col="tp1Ordered">TP1 Rev <span class="sort-icon">↕</span></th>
@@ -533,7 +713,7 @@
         if (!clientMatch && !repMatch && !chainMatch) return false;
       }
 
-      // Tag filter
+      // Tag & G/L filter
       if (activeFilter === 'vmi' && !item.isVmi) return false;
       if (activeFilter === '1wt' && !item.is1Wt) return false;
       if (activeFilter === 'chain' && !item.chainCode) return false;
@@ -545,6 +725,9 @@
         const diff = item.revDiff !== undefined ? item.revDiff : 0;
         if (diff >= 0) return false;
       }
+      if (activeFilter === 'new' && item.accountStatus !== 'NEW') return false;
+      if (activeFilter === 'lost' && item.accountStatus !== 'CHURNED') return false;
+      if (activeFilter === 'retained' && item.accountStatus !== 'RETAINED') return false;
 
       return true;
     });
@@ -553,6 +736,10 @@
     filtered.sort((a, b) => {
       let v1 = a[sortCol];
       let v2 = b[sortCol];
+      if (sortCol === 'gl') {
+        v1 = a.revDiff !== undefined ? a.revDiff : 0;
+        v2 = b.revDiff !== undefined ? b.revDiff : 0;
+      }
       if (v1 === undefined) v1 = 0;
       if (v2 === undefined) v2 = 0;
       if (typeof v1 === 'string') {
@@ -589,7 +776,7 @@
     // Render Rows
     let html = '';
     if (visibleRows.length === 0) {
-      const colSpan = activeTab === 'compare' ? 10 : 6;
+      const colSpan = activeTab === 'compare' ? 11 : 6;
       html = `<tr><td colspan="${colSpan}" style="text-align: center; color: var(--text-muted); padding: 2rem;">No matching client records found.</td></tr>`;
     } else {
       visibleRows.forEach(r => {
@@ -607,6 +794,7 @@
                 <div style="font-weight: 600;">${window.VMI.escapeHtml(r.client)}</div>
                 <div>${badges}</div>
               </td>
+              <td>${window.VMI.renderGlBadge(r)}</td>
               <td>${repTag}</td>
               <td class="text-right">${window.VMI.fmtInt(r.tp1Orders)}</td>
               <td class="text-right">${window.VMI.fmtCurrency(r.tp1Ordered)}</td>
@@ -668,6 +856,7 @@
       tfoot.innerHTML = `
         <tr>
           <td><strong>${label}</strong></td>
+          <td>-</td>
           <td>-</td>
           <td class="text-right">${window.VMI.fmtInt(fTp1Ord)}</td>
           <td class="text-right">${window.VMI.fmtCurrency(fTp1Rev)}</td>
@@ -803,11 +992,7 @@
     // Tag filter pills
     document.querySelectorAll('.filter-pill').forEach(pill => {
       pill.addEventListener('click', () => {
-        document.querySelectorAll('.filter-pill').forEach(p => p.classList.remove('active'));
-        pill.classList.add('active');
-        activeFilter = pill.getAttribute('data-filter');
-        currentPage = 1;
-        renderClientTable();
+        setGlFilter(pill.getAttribute('data-filter'));
       });
     });
 
@@ -827,29 +1012,74 @@
       renderClientTable();
     });
 
-    // Gainers vs Decliners Toggle
+    // G/L Selector Cards
+    const glGrid = document.getElementById('rep1GlGrid');
+    if (glGrid) {
+      glGrid.addEventListener('click', (e) => {
+        const card = e.target.closest('.gl-card');
+        if (!card) return;
+        const filterId = card.getAttribute('data-glfilter');
+        setGlFilter(filterId);
+      });
+    }
+
+    const btnResetGl = document.getElementById('btnRep1ResetGlFilter');
+    if (btnResetGl) {
+      btnResetGl.addEventListener('click', () => {
+        setGlFilter('all');
+      });
+    }
+
+    // Chart toggles (Gainers, Decliners, New, Lost)
     const btnGainers = document.getElementById('btnGainersToggle');
     const btnDecliners = document.getElementById('btnDeclinersToggle');
-    btnGainers.classList.add('btn-primary');
-    btnGainers.classList.remove('btn-secondary');
+    const btnNew = document.getElementById('btnNewToggle');
+    const btnLost = document.getElementById('btnLostToggle');
+    const chartBtns = [btnGainers, btnDecliners, btnNew, btnLost].filter(Boolean);
 
-    btnGainers.addEventListener('click', () => {
-      gainersViewMode = 'gainers';
-      btnGainers.classList.add('btn-primary');
-      btnGainers.classList.remove('btn-secondary');
-      btnDecliners.classList.add('btn-secondary');
-      btnDecliners.classList.remove('btn-primary');
-      renderGainersDeclinersChart();
-    });
+    function updateChartBtnStates(activeBtn) {
+      chartBtns.forEach(b => {
+        if (b === activeBtn) {
+          b.classList.add('btn-primary');
+          b.classList.remove('btn-secondary');
+        } else {
+          b.classList.add('btn-secondary');
+          b.classList.remove('btn-primary');
+        }
+      });
+    }
 
-    btnDecliners.addEventListener('click', () => {
-      gainersViewMode = 'decliners';
-      btnDecliners.classList.add('btn-primary');
-      btnDecliners.classList.remove('btn-secondary');
-      btnGainers.classList.add('btn-secondary');
-      btnGainers.classList.remove('btn-primary');
-      renderGainersDeclinersChart();
-    });
+    if (btnGainers) {
+      btnGainers.addEventListener('click', () => {
+        gainersViewMode = 'gainers';
+        updateChartBtnStates(btnGainers);
+        renderGainersDeclinersChart();
+      });
+    }
+
+    if (btnDecliners) {
+      btnDecliners.addEventListener('click', () => {
+        gainersViewMode = 'decliners';
+        updateChartBtnStates(btnDecliners);
+        renderGainersDeclinersChart();
+      });
+    }
+
+    if (btnNew) {
+      btnNew.addEventListener('click', () => {
+        gainersViewMode = 'new';
+        updateChartBtnStates(btnNew);
+        renderGainersDeclinersChart();
+      });
+    }
+
+    if (btnLost) {
+      btnLost.addEventListener('click', () => {
+        gainersViewMode = 'lost';
+        updateChartBtnStates(btnLost);
+        renderGainersDeclinersChart();
+      });
+    }
 
     // Rep Consolidate Checkbox
     const chkConsolidate = document.getElementById('chkConsolidateReps');

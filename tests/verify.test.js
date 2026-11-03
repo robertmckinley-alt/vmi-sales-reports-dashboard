@@ -165,14 +165,33 @@ it('Report 2 (12wk v 12wk) has exact preroll totals matching client sums', () =>
   assert.strictEqual(sumUntDiff, -36330, `Sum of preroll unitDiff must be -36330, got ${sumUntDiff}`);
 });
 
-// Test 6: Report 2 (12wk v 12wk) Gained (14) and Lost (18) Accounts & Specific Stores
-it('Report 2 has exact 14 Gained (G) and 18 Lost (L) accounts with exact store joins', () => {
+// Test 6: Report 2 (12wk v 12wk) Gain & Loss Classification, Account Status & Specific Stores
+it('Report 2 has exact 198 G and 206 L accounts, 14 New, 18 Churned, and 372 Retained with exact store joins', () => {
   const gCount = r2.clients.filter(c => c.gl === 'G').length;
   const lCount = r2.clients.filter(c => c.gl === 'L').length;
-  assert.strictEqual(gCount, 14, `G count must be 14, got ${gCount}`);
-  assert.strictEqual(lCount, 18, `L count must be 18, got ${lCount}`);
+  assert.strictEqual(gCount, 198, `G count must be 198, got ${gCount}`);
+  assert.strictEqual(lCount, 206, `L count must be 206, got ${lCount}`);
 
-  // Hashtag Fremont: active in both periods
+  const newCount = r2.clients.filter(c => c.accountStatus === 'NEW').length;
+  const churnCount = r2.clients.filter(c => c.accountStatus === 'CHURNED').length;
+  const retainCount = r2.clients.filter(c => c.accountStatus === 'RETAINED').length;
+  assert.strictEqual(newCount, 14, `NEW account status count must be 14, got ${newCount}`);
+  assert.strictEqual(churnCount, 18, `CHURNED account status count must be 18, got ${churnCount}`);
+  assert.strictEqual(retainCount, 372, `RETAINED account status count must be 372, got ${retainCount}`);
+
+  // Also check Report 1 counts: 222 G, 190 L, 13 NEW, 12 CHURNED, 387 RETAINED
+  const r1GCount = r1.compareClients.filter(c => c.gl === 'G').length;
+  const r1LCount = r1.compareClients.filter(c => c.gl === 'L').length;
+  const r1NewCount = r1.compareClients.filter(c => c.accountStatus === 'NEW').length;
+  const r1ChurnCount = r1.compareClients.filter(c => c.accountStatus === 'CHURNED').length;
+  const r1RetainCount = r1.compareClients.filter(c => c.accountStatus === 'RETAINED').length;
+  assert.strictEqual(r1GCount, 222, `Report 1 G count must be 222, got ${r1GCount}`);
+  assert.strictEqual(r1LCount, 190, `Report 1 L count must be 190, got ${r1LCount}`);
+  assert.strictEqual(r1NewCount, 13, `Report 1 NEW account status count must be 13, got ${r1NewCount}`);
+  assert.strictEqual(r1ChurnCount, 12, `Report 1 CHURNED account status count must be 12, got ${r1ChurnCount}`);
+  assert.strictEqual(r1RetainCount, 387, `Report 1 RETAINED account status count must be 387, got ${r1RetainCount}`);
+
+  // Hashtag Fremont: active in both periods, revDiff is negative -> RETAINED, gl === 'L'
   const hFremont = r2.clients.find(c => c.client === '[HTG] Hashtag Fremont - 1WT');
   assert(hFremont, '[HTG] Hashtag Fremont - 1WT exists');
   assert.strictEqual(hFremont.tp1Orders, 2, 'Hashtag Fremont TP1 orders === 2');
@@ -182,23 +201,26 @@ it('Report 2 has exact 14 Gained (G) and 18 Lost (L) accounts with exact store j
   assert.strictEqual(hFremont.orderDiff, -1, 'Hashtag Fremont orderDiff === -1');
   assert.strictEqual(hFremont.revDiff, -472.74, 'Hashtag Fremont revDiff === -472.74');
   assert.strictEqual(hFremont.unitDiff, -193, 'Hashtag Fremont unitDiff === -193');
-  assert.strictEqual(hFremont.gl, null, 'Hashtag Fremont is active in both, gl must be null');
+  assert.strictEqual(hFremont.gl, 'L', 'Hashtag Fremont revDiff < 0, gl must be L');
+  assert.strictEqual(hFremont.accountStatus, 'RETAINED', 'Hashtag Fremont accountStatus must be RETAINED');
 
-  // Hashtag Everett: Lost in TP2
+  // Hashtag Everett: Lost in TP2 -> CHURNED, gl === 'L'
   const hEverett = r2.clients.find(c => c.client === '[HTG] Hashtag Everett - 1WT');
   assert(hEverett, '[HTG] Hashtag Everett - 1WT exists');
   assert.strictEqual(hEverett.tp1Orders, 1, 'Hashtag Everett TP1 orders === 1');
   assert.strictEqual(hEverett.tp1Ordered, 490.62, 'Hashtag Everett TP1 rev === 490.62');
   assert.strictEqual(hEverett.tp2Orders, 0, 'Hashtag Everett TP2 orders === 0');
   assert.strictEqual(hEverett.gl, 'L', 'Hashtag Everett gl must be L');
+  assert.strictEqual(hEverett.accountStatus, 'CHURNED', 'Hashtag Everett accountStatus must be CHURNED');
 
-  // Cloud 9 Cheney: Gained in TP2
+  // Cloud 9 Cheney: Gained in TP2 -> NEW, gl === 'G'
   const c9Cheney = r2.clients.find(c => c.client === '[C9] Cloud 9 - Cheney - VMI - 1WT');
   assert(c9Cheney, '[C9] Cloud 9 - Cheney - VMI - 1WT exists');
   assert.strictEqual(c9Cheney.tp1Orders, 0, 'Cloud 9 Cheney TP1 orders === 0');
   assert.strictEqual(c9Cheney.tp2Orders, 2, 'Cloud 9 Cheney TP2 orders === 2');
   assert.strictEqual(c9Cheney.tp2Ordered, 1467.00, 'Cloud 9 Cheney TP2 rev === 1467.00');
   assert.strictEqual(c9Cheney.gl, 'G', 'Cloud 9 Cheney gl must be G');
+  assert.strictEqual(c9Cheney.accountStatus, 'NEW', 'Cloud 9 Cheney accountStatus must be NEW');
 });
 
 // Test 7: Report 2 Voids and Categories
@@ -263,6 +285,85 @@ it('.gitignore and vercel.json are configured correctly', () => {
   assert(fs.existsSync(vercelPath), 'vercel.json exists');
   const vj = JSON.parse(fs.readFileSync(vercelPath, 'utf8'));
   assert(vj.cleanUrls === true, 'vercel.json has cleanUrls === true');
+});
+
+// Test 10: QA Item 1 - Report 2 Preroll Rep & Period Data Math Validation
+it('Report 2 has exact salesReps (11), tp1Clients (390), tp2Clients (386) balancing to penny', () => {
+  assert(Array.isArray(r2.salesReps), 'r2.salesReps is an array');
+  assert.strictEqual(r2.salesReps.length, 11, `r2.salesReps has 11 entries, got ${r2.salesReps.length}`);
+
+  assert(Array.isArray(r2.tp1Clients), 'r2.tp1Clients is an array');
+  assert.strictEqual(r2.tp1Clients.length, 390, `r2.tp1Clients has 390 entries, got ${r2.tp1Clients.length}`);
+
+  assert(Array.isArray(r2.tp2Clients), 'r2.tp2Clients is an array');
+  assert.strictEqual(r2.tp2Clients.length, 386, `r2.tp2Clients has 386 entries, got ${r2.tp2Clients.length}`);
+
+  // Sum of tp1Clients matches tp1Total
+  const sumTp1Ord = r2.tp1Clients.reduce((acc, c) => acc + c.orders, 0);
+  const sumTp1Rev = r2.tp1Clients.reduce((acc, c) => acc + c.ordered, 0);
+  const sumTp1Unt = r2.tp1Clients.reduce((acc, c) => acc + c.units, 0);
+  assert.strictEqual(sumTp1Ord, r2.tp1Total.orders, 'TP1 clients sum orders === r2.tp1Total.orders');
+  assert(Math.abs(sumTp1Rev - r2.tp1Total.ordered) < 0.05, 'TP1 clients sum rev === r2.tp1Total.ordered');
+  assert.strictEqual(sumTp1Unt, r2.tp1Total.units, 'TP1 clients sum units === r2.tp1Total.units');
+
+  // Sum of tp2Clients matches tp2Total
+  const sumTp2Ord = r2.tp2Clients.reduce((acc, c) => acc + c.orders, 0);
+  const sumTp2Rev = r2.tp2Clients.reduce((acc, c) => acc + c.ordered, 0);
+  const sumTp2Unt = r2.tp2Clients.reduce((acc, c) => acc + c.units, 0);
+  assert.strictEqual(sumTp2Ord, r2.tp2Total.orders, 'TP2 clients sum orders === r2.tp2Total.orders');
+  assert(Math.abs(sumTp2Rev - r2.tp2Total.ordered) < 0.05, 'TP2 clients sum rev === r2.tp2Total.ordered');
+  assert.strictEqual(sumTp2Unt, r2.tp2Total.units, 'TP2 clients sum units === r2.tp2Total.units');
+
+  // Sum of salesReps matches totals
+  const repTp1Rev = r2.salesReps.reduce((acc, r) => acc + r.tp1Ordered, 0);
+  const repTp2Rev = r2.salesReps.reduce((acc, r) => acc + r.tp2Ordered, 0);
+  assert(Math.abs(repTp1Rev - r2.tp1Total.ordered) < 0.05, `Rep sum TP1 rev ${repTp1Rev} matches total ${r2.tp1Total.ordered}`);
+  assert(Math.abs(repTp2Rev - r2.tp2Total.ordered) < 0.05, `Rep sum TP2 rev ${repTp2Rev} matches total ${r2.tp2Total.ordered}`);
+});
+
+// Test 11: QA Items 2 & 3 - Executive UI Schema Parity, G/L Selector Bar & Sortable Columns
+it('UI Schema Parity: G/L selector bar, 5 KPI cards, Rep Comparison chart, Top Gainers/Decliners chart, Sales Reps performance table, and Period tabs exist on both pages', () => {
+  const cssPath = path.join(rootDir, 'styles.css');
+  const css = fs.readFileSync(cssPath, 'utf8');
+  assert(css.includes('max-width: 1600px'), 'styles.css has max-width: 1600px for executive widescreen layout');
+  assert(css.includes('.gl-selector-card'), 'styles.css defines .gl-selector-card');
+  assert(css.includes('.gl-card'), 'styles.css defines .gl-card');
+  assert(css.includes('.tag-gl-gain'), 'styles.css defines .tag-gl-gain');
+  assert(css.includes('.tag-gl-loss'), 'styles.css defines .tag-gl-loss');
+
+  const idx = fs.readFileSync(indexHtmlPath, 'utf8');
+  const pr = fs.readFileSync(prerollHtmlPath, 'utf8');
+
+  // Report 1 checks
+  assert(idx.includes('id="rep1GlSelectorCard"'), 'Report 1 has #rep1GlSelectorCard');
+  assert(idx.includes('id="kpiCardGl"'), 'Report 1 has 5th KPI card #kpiCardGl');
+  assert(idx.includes('id="repChartContainer"'), 'Report 1 has repChartContainer');
+  assert(idx.includes('id="gainersDeclinersChartContainer"'), 'Report 1 has gainersDeclinersChartContainer');
+  assert(idx.includes('id="btnGainersToggle"'), 'Report 1 has Top Gainers toggle button');
+  assert(idx.includes('id="btnDeclinersToggle"'), 'Report 1 has Top Decliners toggle button');
+  assert(idx.includes('id="btnNewToggle"'), 'Report 1 has New Accounts toggle button');
+  assert(idx.includes('id="btnLostToggle"'), 'Report 1 has Lost Accounts toggle button');
+  assert(idx.includes('id="repsTable"'), 'Report 1 has Sales Reps Table');
+  assert(idx.includes('id="chkConsolidateReps"'), 'Report 1 has chkConsolidateReps toggle');
+  assert(idx.includes('data-tab="compare"'), 'Report 1 has Compare tab');
+  assert(idx.includes('data-tab="tp1"'), 'Report 1 has TP1 tab');
+  assert(idx.includes('data-tab="tp2"'), 'Report 1 has TP2 tab');
+
+  // Report 2 checks
+  assert(pr.includes('id="prerollGlSelectorCard"'), 'Report 2 has #prerollGlSelectorCard');
+  assert(pr.includes('id="kpiCardPrerollGl"'), 'Report 2 has 5th KPI card #kpiCardPrerollGl');
+  assert(pr.includes('id="prerollRepChartContainer"'), 'Report 2 has prerollRepChartContainer');
+  assert(pr.includes('id="prerollGainersDeclinersChartContainer"'), 'Report 2 has prerollGainersDeclinersChartContainer');
+  assert(pr.includes('id="btnGainersToggle"'), 'Report 2 has Top Gainers toggle button');
+  assert(pr.includes('id="btnDeclinersToggle"'), 'Report 2 has Top Decliners toggle button');
+  assert(pr.includes('id="btnNewToggle"'), 'Report 2 has New Accounts toggle button');
+  assert(pr.includes('id="btnLostToggle"'), 'Report 2 has Lost Accounts toggle button');
+  assert(pr.includes('id="prerollRepsTable"'), 'Report 2 has Preroll Sales Reps Table');
+  assert(pr.includes('id="chkPrerollConsolidateReps"'), 'Report 2 has chkPrerollConsolidateReps toggle');
+  assert(pr.includes('data-tab="compare"'), 'Report 2 has Compare tab');
+  assert(pr.includes('data-tab="tp1"'), 'Report 2 has TP1 tab');
+  assert(pr.includes('data-tab="tp2"'), 'Report 2 has TP2 tab');
+  assert(pr.includes('data-tab="voids"'), 'Report 2 has Voids tab');
 });
 
 console.log(`\n========================================`);

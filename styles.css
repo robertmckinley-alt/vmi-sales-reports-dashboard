@@ -178,7 +178,7 @@ a {
 
 /* Main Container */
 .container {
-  max-width: 1440px;
+  max-width: 1600px;
   margin: 0 auto;
   padding: 1.5rem;
 }
@@ -577,17 +577,33 @@ a {
   border: 1px solid rgba(99, 102, 241, 0.3);
 }
 
-.tag-gl-g {
+.tag-gl-g,
+.tag-gl-gain {
   background: var(--emerald-bg);
   color: var(--emerald-text);
   border: 1px solid var(--emerald-border);
   font-weight: 800;
 }
 
-.tag-gl-l {
+.tag-gl-l,
+.tag-gl-loss {
   background: var(--rose-bg);
   color: var(--rose-text);
   border: 1px solid var(--rose-border);
+  font-weight: 800;
+}
+
+.tag-gl-new {
+  background: rgba(16, 185, 129, 0.22);
+  color: #a7f3d0;
+  border: 1px solid rgba(16, 185, 129, 0.5);
+  font-weight: 800;
+}
+
+.tag-gl-churned {
+  background: rgba(244, 63, 94, 0.22);
+  color: #fecdd3;
+  border: 1px solid rgba(244, 63, 94, 0.5);
   font-weight: 800;
 }
 
@@ -622,7 +638,7 @@ table.data-table th {
   font-size: 0.775rem;
   text-transform: uppercase;
   letter-spacing: 0.03em;
-  padding: 0.75rem 0.85rem;
+  padding: 0.6rem 0.65rem;
   border-bottom: 1px solid var(--border-light);
   white-space: nowrap;
   user-select: none;
@@ -650,7 +666,7 @@ table.data-table th.sorted-desc .sort-icon {
 }
 
 table.data-table td {
-  padding: 0.65rem 0.85rem;
+  padding: 0.6rem 0.65rem;
   border-bottom: 1px solid var(--border-color);
   color: var(--text-primary);
   white-space: nowrap;
@@ -855,4 +871,124 @@ table.data-table tfoot td {
   padding: 0.1rem 0.4rem;
   border-radius: 4px;
 }
+
+/* =========================================================
+   SELECTABLE GAIN & LOSS SELECTOR BAR
+   ========================================================= */
+.gl-selector-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-left: 4px solid var(--emerald-text);
+  border-radius: var(--radius-md);
+  padding: 1rem 1.25rem;
+  margin-bottom: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  box-shadow: var(--shadow-sm);
+}
+
+.gl-selector-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.gl-selector-title-group {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.gl-selector-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.gl-selector-subtitle {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.gl-selector-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 0.65rem;
+}
+
+.gl-card {
+  background: var(--bg-input);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  padding: 0.7rem 0.9rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  user-select: none;
+}
+
+.gl-card:hover {
+  border-color: var(--cyan);
+  background: var(--bg-card-hover);
+  transform: translateY(-1px);
+}
+
+.gl-card.active {
+  border-color: var(--cyan-light);
+  background: rgba(6, 182, 212, 0.12);
+  box-shadow: 0 0 10px rgba(6, 182, 212, 0.25);
+}
+
+.gl-card.active.gain {
+  border-color: var(--emerald-text);
+  background: rgba(16, 185, 129, 0.12);
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.25);
+}
+
+.gl-card.active.loss {
+  border-color: var(--rose-text);
+  background: rgba(244, 63, 94, 0.12);
+  box-shadow: 0 0 10px rgba(244, 63, 94, 0.25);
+}
+
+.gl-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.725rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.gl-card-count {
+  font-size: 0.725rem;
+  padding: 0.1rem 0.45rem;
+  border-radius: var(--radius-full);
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-primary);
+  font-weight: 700;
+}
+
+.gl-card-val {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  line-height: 1.2;
+}
+
+.gl-card-sub {
+  font-size: 0.725rem;
+  color: var(--text-muted);
+}
+
 
